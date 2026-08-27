@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JARVIS AI — V1</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="ambient"></div>
+
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-orb"></div>
+        <div>
+          <div class="brand-name">JARVIS</div>
+          <div class="brand-sub">PERSONAL AI SYSTEM · V1</div>
+        </div>
+      </div>
+      <div class="status"><span id="statusDot"></span><span id="statusText">OFFLINE</span></div>
+    </header>
+
+    <section class="hero">
+      <div class="core-ring">
+        <div class="core-inner">
+          <div class="core-label">JARVIS CORE</div>
+          <div id="coreState" class="core-state">STANDBY</div>
+        </div>
+      </div>
+      <p id="greeting">Awaiting authentication.</p>
+    </section>
+
+    <section class="panel login-panel" id="loginPanel">
+      <h2>Initialize Jarvis</h2>
+      <p>Sign in with Google to create your secure Jarvis identity.</p>
+      <button id="loginBtn" class="primary">Continue with Google</button>
+      <div id="loginMessage" class="message"></div>
+    </section>
+
+    <section class="dashboard hidden" id="dashboard">
+      <div class="panel user-card">
+        <div>
+          <div class="eyebrow">CONNECTED USER</div>
+          <div id="userName">—</div>
+          <div id="userEmail">—</div>
+        </div>
+        <button id="logoutBtn" class="secondary">Sign out</button>
+      </div>
+
+      <div class="grid">
+        <div class="panel">
+          <div class="eyebrow">VOICE CONTROL</div>
+          <h3>Microphone</h3>
+          <p id="micText">Microphone is not enabled.</p>
+          <button id="micBtn" class="primary">Enable Microphone</button>
+          <div class="mic-indicator" id="micIndicator"><span></span> MIC OFF</div>
+        </div>
+
+        <div class="panel">
+          <div class="eyebrow">SYSTEM</div>
+          <h3>Jarvis Core</h3>
+          <div class="system-row"><span>Firebase Auth</span><b id="authState">READY</b></div>
+          <div class="system-row"><span>Cloud profile</span><b id="profileState">WAITING</b></div>
+          <div class="system-row"><span>AI Brain</span><b>CHATGPT</b></div>
+          <div class="system-row"><span>Tool Brain</span><b>GEMINI</b></div>
+        </div>
+      </div>
+
+      <div class="panel command">
+        <div class="eyebrow">COMMAND CONSOLE</div>
+        <div class="command-line">
+          <span>›</span><input id="commandInput" placeholder="Speak or type a command..." autocomplete="off">
+          <button id="sendBtn" class="primary small">SEND</button>
+        </div>
+        <div id="response" class="response">Jarvis is ready.</div>
+      </div>
+    </section>
+
+    <footer>Powered by <strong>SHASHWAT</strong></footer>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
