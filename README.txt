@@ -15,3 +15,4 @@ Architecture:
 
 IMPORTANT:
 Never put ChatGPT/Gemini secret API keys in this browser code. They belong behind a server/backend or secure serverless function.
+update for rander test 
