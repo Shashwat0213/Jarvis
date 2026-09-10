@@ -43,6 +43,14 @@ const provider = new GoogleAuthProvider();
 
 
 // ========================================
+// JARVIS BACKEND
+// ========================================
+
+const JARVIS_BACKEND =
+  "https://jarvis-ai-by-shashwat.onrender.com";
+
+
+// ========================================
 // HELPER
 // ========================================
 
@@ -86,9 +94,16 @@ $("loginBtn").onclick = async () => {
 // LOGOUT
 // ========================================
 
-$("logoutBtn").onclick = () => {
+$("logoutBtn").onclick = async () => {
 
-  signOut(auth);
+  try {
+
+    await signOut(auth);
+
+  } catch (e) {
+
+    console.error("LOGOUT ERROR:", e);
+  }
 
 };
 
@@ -198,10 +213,6 @@ $("micBtn").onclick = async () => {
     window.webkitSpeechRecognition;
 
 
-  // ----------------------------------------
-  // CHECK MICROPHONE
-  // ----------------------------------------
-
   if (!navigator.mediaDevices?.getUserMedia) {
 
     $("micText").textContent =
@@ -212,10 +223,6 @@ $("micBtn").onclick = async () => {
 
 
   try {
-
-    // --------------------------------------
-    // REQUEST MICROPHONE PERMISSION
-    // --------------------------------------
 
     const stream =
       await navigator.mediaDevices.getUserMedia({
@@ -240,10 +247,6 @@ $("micBtn").onclick = async () => {
         : "Microphone permission granted.";
 
 
-    // --------------------------------------
-    // SPEECH RECOGNITION
-    // --------------------------------------
-
     if (SpeechRecognition) {
 
       const recognition =
@@ -260,10 +263,6 @@ $("micBtn").onclick = async () => {
         1;
 
 
-      // ------------------------------------
-      // LISTENING START
-      // ------------------------------------
-
       recognition.onstart = () => {
 
         $("micIndicator").innerHTML =
@@ -276,10 +275,6 @@ $("micBtn").onclick = async () => {
           "Listening...";
       };
 
-
-      // ------------------------------------
-      // VOICE RESULT
-      // ------------------------------------
 
       recognition.onresult = event => {
 
@@ -297,16 +292,9 @@ $("micBtn").onclick = async () => {
           transcript;
 
 
-        // Send voice command
-        // to online backend
-
         sendCommand();
       };
 
-
-      // ------------------------------------
-      // VOICE ERROR
-      // ------------------------------------
 
       recognition.onerror = event => {
 
@@ -327,10 +315,6 @@ $("micBtn").onclick = async () => {
       };
 
 
-      // ------------------------------------
-      // VOICE END
-      // ------------------------------------
-
       recognition.onend = () => {
 
         $("coreState").textContent =
@@ -340,10 +324,6 @@ $("micBtn").onclick = async () => {
           "<span></span> MIC READY";
       };
 
-
-      // ------------------------------------
-      // START LISTENING
-      // ------------------------------------
 
       recognition.start();
 
@@ -367,13 +347,23 @@ $("micBtn").onclick = async () => {
 
 
 // ========================================
-// SEND COMMAND TO ONLINE JARVIS BACKEND
+// SEND COMMAND TO JARVIS
 // ========================================
 
 async function sendCommand() {
 
+  const input =
+    $("commandInput");
+
+  const responseBox =
+    $("response");
+
+  const coreState =
+    $("coreState");
+
+
   const text =
-    $("commandInput").value.trim();
+    input.value.trim();
 
 
   // ----------------------------------------
@@ -381,41 +371,52 @@ async function sendCommand() {
   // ----------------------------------------
 
   if (!text) {
+
+    responseBox.textContent =
+      "Please enter a command.";
+
     return;
   }
 
 
   console.log(
-    "COMMAND SENT:",
+    "JARVIS REQUEST:",
     text
   );
 
 
   // ----------------------------------------
-  // UI PROCESSING STATE
+  // PROCESSING UI
   // ----------------------------------------
 
-  $("response").textContent =
+  responseBox.textContent =
     "Jarvis is thinking...";
 
-  $("coreState").textContent =
+  coreState.textContent =
     "PROCESSING";
 
 
   try {
 
+    console.log(
+      "Connecting to:",
+      JARVIS_BACKEND + "/api/chat"
+    );
+
+
     // ======================================
-    // ONLINE RENDER BACKEND
+    // SEND REQUEST
     // ======================================
 
     const response =
       await fetch(
-        "https://jarvis-ai-by-shashwat.onrender.com/api/chat",
+        JARVIS_BACKEND + "/api/chat",
         {
           method: "POST",
 
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Accept": "application/json"
           },
 
           body: JSON.stringify({
@@ -425,59 +426,111 @@ async function sendCommand() {
       );
 
 
-    // --------------------------------------
-    // READ SERVER RESPONSE
-    // --------------------------------------
+    console.log(
+      "HTTP STATUS:",
+      response.status
+    );
 
-    const data =
-      await response.json();
+
+    // ======================================
+    // READ RESPONSE SAFELY
+    // ======================================
+
+    const contentType =
+      response.headers.get("content-type") || "";
+
+
+    let data;
+
+
+    if (contentType.includes("application/json")) {
+
+      data =
+        await response.json();
+
+    } else {
+
+      const raw =
+        await response.text();
+
+      console.error(
+        "NON-JSON BACKEND RESPONSE:",
+        raw
+      );
+
+      throw new Error(
+        `Backend returned ${response.status} instead of JSON.`
+      );
+    }
 
 
     console.log(
-      "BACKEND RESPONSE:",
+      "JARVIS BACKEND RESPONSE:",
       data
     );
 
 
-    // --------------------------------------
-    // SERVER ERROR
-    // --------------------------------------
+    // ======================================
+    // BACKEND ERROR
+    // ======================================
 
     if (!response.ok) {
 
       throw new Error(
-        data.error ||
+        data?.error ||
         `Server error: ${response.status}`
       );
     }
 
 
-    // --------------------------------------
-    // SHOW JARVIS REPLY
-    // --------------------------------------
+    // ======================================
+    // JARVIS REPLY
+    // ======================================
 
-    $("response").textContent =
-      data.reply ||
-      "No reply received.";
+    const reply =
+      data?.reply;
 
 
-    $("coreState").textContent =
+    if (!reply) {
+
+      throw new Error(
+        "Backend connected, but no JARVIS reply was received."
+      );
+    }
+
+
+    responseBox.textContent =
+      reply;
+
+
+    coreState.textContent =
       "ONLINE";
+
+
+    console.log(
+      "JARVIS REPLY:",
+      reply
+    );
 
 
   } catch (error) {
 
     console.error(
-      "JARVIS BACKEND ERROR:",
+      "JARVIS CONNECTION ERROR:",
       error
     );
 
 
-    $("response").textContent =
-      "Jarvis backend से connection नहीं हो पाया।";
+    // ======================================
+    // SHOW REAL ERROR
+    // ======================================
+
+    responseBox.textContent =
+      "JARVIS ERROR: " +
+      (error?.message || "Unknown error");
 
 
-    $("coreState").textContent =
+    coreState.textContent =
       "ERROR";
   }
 
@@ -501,6 +554,8 @@ $("commandInput").addEventListener(
   event => {
 
     if (event.key === "Enter") {
+
+      event.preventDefault();
 
       sendCommand();
     }
