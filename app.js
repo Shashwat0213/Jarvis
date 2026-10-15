@@ -42,7 +42,7 @@ const provider = new GoogleAuthProvider();
 // BACKEND URL
 // ========================================
 
-"const JARVIS_BACKEND = "https://jarvis-0bdg.onrender.com";";
+const JARVIS_BACKEND = "https://jarvis-0bdg.onrender.com";
 const REQUEST_TIMEOUT_MS = 30000;
 
 // ========================================
