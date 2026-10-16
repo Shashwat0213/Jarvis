@@ -7,16 +7,17 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
 // ========================================
 // CONFIG
 // ========================================
 
-const GEMINI_MODEL = "gemini-2.0-flash";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+
 const GEMINI_URL =
   `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
+// CORS — allowed origins
 const ALLOWED_ORIGINS = [
   "https://shashwat0213.github.io",
   "http://localhost:3000",
@@ -25,22 +26,70 @@ const ALLOWED_ORIGINS = [
 ];
 
 // ========================================
-// MIDDLEWARE
+// SECURITY HEADERS MIDDLEWARE
+// ========================================
+
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "microphone=(self)");
+  res.removeHeader("X-Powered-By");
+  next();
+});
+
+// ========================================
+// CORS MIDDLEWARE
 // ========================================
 
 app.use(cors({
   origin: (origin, callback) => {
-    // allow requests with no origin (curl, Postman, mobile apps)
+    // curl, Postman jaise tools ke liye origin nahi hota
     if (!origin) return callback(null, true);
     if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
     console.warn("CORS BLOCKED:", origin);
     return callback(new Error("Not allowed by CORS"));
   },
   methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Accept"]
+  allowedHeaders: ["Content-Type", "Accept"],
+  credentials: false
 }));
 
-app.use(express.json({ limit: "1mb" }));
+// ========================================
+// BODY PARSER
+// ========================================
+
+app.use(express.json({ limit: "100kb" }));
+
+// ========================================
+// RATE LIMITING (simple in-memory)
+// ========================================
+
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 60 * 1000;  // 1 minute
+const RATE_LIMIT_MAX = 20;            // 20 requests per minute per IP
+
+function rateLimit(req, res, next) {
+  const ip = req.ip || req.headers["x-forwarded-for"] || "unknown";
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip) || { count: 0, reset: now + RATE_LIMIT_WINDOW };
+
+  if (now > entry.reset) {
+    entry.count = 0;
+    entry.reset = now + RATE_LIMIT_WINDOW;
+  }
+
+  entry.count++;
+  rateLimitMap.set(ip, entry);
+
+  if (entry.count > RATE_LIMIT_MAX) {
+    return res.status(429).json({
+      error: "Too many requests. Please wait a minute and try again."
+    });
+  }
+
+  next();
+}
 
 // ========================================
 // HEALTH CHECK
@@ -61,7 +110,7 @@ app.get("/", (req, res) => {
 // JARVIS CHAT
 // ========================================
 
-app.post("/api/chat", async (req, res) => {
+app.post("/api/chat", rateLimit, async (req, res) => {
   try {
     const { message } = req.body;
 
@@ -77,7 +126,7 @@ app.post("/api/chat", async (req, res) => {
 
     if (message.length > 4000) {
       return res.status(400).json({
-        error: "Message too long (max 4000 chars)."
+        error: "Message too long (max 4000 characters)."
       });
     }
 
@@ -95,13 +144,14 @@ app.post("/api/chat", async (req, res) => {
     console.log("JARVIS COMMAND:", message);
 
     // ----------------------------------------
-    // GEMINI REQUEST
+    // GEMINI REQUEST (with timeout)
     // ----------------------------------------
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 25000);
 
     let geminiResponse;
+
     try {
       geminiResponse = await fetch(GEMINI_URL, {
         method: "POST",
@@ -143,6 +193,7 @@ app.post("/api/chat", async (req, res) => {
       }
       throw fetchErr;
     }
+
     clearTimeout(timeout);
 
     // ----------------------------------------
@@ -197,6 +248,17 @@ app.post("/api/chat", async (req, res) => {
 app.use((req, res) => {
   res.status(404).json({
     error: `Route not found: ${req.method} ${req.path}`
+  });
+});
+
+// ========================================
+// ERROR HANDLER
+// ========================================
+
+app.use((err, req, res, next) => {
+  console.error("UNHANDLED ERROR:", err);
+  res.status(500).json({
+    error: "Internal server error."
   });
 });
 
