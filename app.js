@@ -18,6 +18,9 @@ import {
 // ========================================
 // FIREBASE CONFIG
 // ========================================
+// NOTE: Firebase API key public rakhna SAFE hai.
+// Ye project identifier hai, password nahi.
+// Asli security Firestore Rules aur Auth se aati hai.
 
 const firebaseConfig = {
   apiKey: "AIzaSyCIiomQVg4N5Fnp9u15yXasBfuny8Of6FQ",
@@ -41,9 +44,12 @@ const provider = new GoogleAuthProvider();
 // ========================================
 // BACKEND URL
 // ========================================
+// ⚠️ IMPORTANT: Ye URL apni nayi Render service ke URL se replace karein.
 
 const JARVIS_BACKEND = "https://jarvis-0bdg.onrender.com";
-const REQUEST_TIMEOUT_MS = 30000;
+
+// 90 seconds — Render free tier cold start ke liye
+const REQUEST_TIMEOUT_MS = 90000;
 
 // ========================================
 // HELPERS
@@ -159,7 +165,7 @@ $("micBtn").onclick = () => {
     return;
   }
 
-  // If already listening, stop
+  // Agar pehle se sun raha hai to stop karo
   if (isListening && recognition) {
     recognition.stop();
     return;
@@ -235,10 +241,11 @@ async function sendCommand() {
 
   console.log("JARVIS REQUEST:", text);
 
-  responseBox.textContent = "Jarvis is thinking...";
+  responseBox.textContent =
+    "Jarvis is waking up... (may take up to 60 seconds on first request)";
   coreState.textContent = "PROCESSING";
 
-  // Clear input so next command is fresh
+  // Input clear karo
   input.value = "";
 
   const controller = new AbortController();
@@ -299,7 +306,7 @@ async function sendCommand() {
 
     if (error.name === "AbortError") {
       friendlyMsg =
-        "Request timed out. Render backend may be waking up — please try again in 30 seconds.";
+        "Request timed out after 90 seconds. Please try again.";
     } else if (error.message?.includes("Failed to fetch")) {
       friendlyMsg =
         "Cannot reach JARVIS backend. Check if Render service is running.";
