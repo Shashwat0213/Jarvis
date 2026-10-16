@@ -44,9 +44,10 @@ const provider = new GoogleAuthProvider();
 // ========================================
 // BACKEND URL
 // ========================================
-// ⚠️ IMPORTANT: Ye URL apni nayi Render service ke URL se replace karein.
+// ⚠️ IMPORTANT: Ye Render service ka LIVE URL hai.
+// Agar Render par naya service banayein, to yahan update karein.
 
-const JARVIS_BACKEND = "https://jarvis-0bdg.onrender.com";
+const JARVIS_BACKEND = "https://jarvis-7es3.onrender.com";
 
 // 90 seconds — Render free tier cold start ke liye
 const REQUEST_TIMEOUT_MS = 90000;
