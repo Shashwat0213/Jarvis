@@ -37,6 +37,7 @@ function speak(text) {
   if (selectedVoice) u.voice = selectedVoice;
   window.speechSynthesis.speak(u);
 }
+
 $("voiceToggle").onclick = () => {
   voiceEnabled = !voiceEnabled;
   $("voiceToggle").textContent = voiceEnabled ? "🔊 Voice ON" : "🔇 Voice OFF";
@@ -73,7 +74,7 @@ onAuthStateChanged(auth, async user => {
   }
 });
 
-// Chat
+// Chat System
 const chatBox = $("chatContainer");
 function addMsg(text, sender, isError = false) {
   if (chatBox.children.length === 1 && chatBox.children[0].textContent.includes("System online")) chatBox.innerHTML = "";
@@ -89,24 +90,31 @@ async function sendCommand() {
   const input = $("commandInput");
   const text = input.value.trim();
   if (!text) return;
+  
   addMsg(text, "user");
   input.value = "";
   const typing = addMsg("...", "jarvis");
   
   try {
     const res = await fetch(JARVIS_BACKEND + "/api/chat", {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", 
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: text })
     });
     const data = await res.json();
     typing.remove();
-    if (data.reply) { addMsg(data.reply, "jarvis"); speak(data.reply); }
-    else throw new Error();
+    if (data.reply) { 
+      addMsg(data.reply, "jarvis"); 
+      speak(data.reply); 
+    } else {
+      throw new Error();
+    }
   } catch (e) {
     typing.remove();
     addMsg("Error connecting to backend.", "jarvis", true);
   }
 }
+
 $("sendBtn").onclick = sendCommand;
 $("commandInput").addEventListener("keydown", e => { if (e.key === "Enter") sendCommand(); });
 
