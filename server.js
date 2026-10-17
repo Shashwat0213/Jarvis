@@ -14,13 +14,12 @@ const PORT = process.env.PORT || 3000;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-// Model priority list — Free models first, then paid as fallback
+// नए और चालू फ्री मॉडल्स की लिस्ट
 const MODEL_CHAIN = [
-  "meta-llama/llama-3-8b-instruct:free",   // 1. Free Llama 3
-  "google/gemma-7b-it:free",               // 2. Free Gemma
-  "mistralai/mistral-7b-instruct:free",    // 3. Free Mistral
-  "openai/gpt-4o-mini",                    // 4. Paid OpenAI
-  "anthropic/claude-3-haiku"               // 5. Paid Claude
+  "meta-llama/llama-3.3-70b-instruct:free",   // 1. सबसे स्मार्ट फ्री मॉडल
+  "openai/gpt-oss-20b:free",                  // 2. OpenAI का फ्री मॉडल
+  "qwen/qwen3.6-plus:free",                   // 3. Qwen का फ्री मॉडल
+  "google/gemma-2-9b-it:free"                 // 4. Google का फ्री मॉडल
 ];
 
 const ALLOWED_ORIGINS = [
