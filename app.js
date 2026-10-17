@@ -183,3 +183,21 @@ function startWakeWordListening() {
     if (event.error !== "no-speech") {
       isListening = false;
       micBtn.classList.remove("listening");
+    }
+  };
+
+  recognition.onend = () => {
+    if (isListening && isWakeWordMode) {
+      try { recognition.start(); } catch(e) {}
+    }
+  };
+
+  try { recognition.start(); } catch (e) { addMessage(e.message, "jarvis", true); }
+}
+
+function startCommandListening() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.lang = "en-IN"; 
+  recognition.continuous = false; 
+  recognition.inter
