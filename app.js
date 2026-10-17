@@ -44,12 +44,8 @@ const provider = new GoogleAuthProvider();
 // ========================================
 // BACKEND URL
 // ========================================
-// ⚠️ IMPORTANT: Ye Render service ka LIVE URL hai.
-// Agar Render par naya service banayein, to yahan update karein.
 
 const JARVIS_BACKEND = "https://jarvis-7es3.onrender.com";
-
-// 90 seconds — Render free tier cold start ke liye
 const REQUEST_TIMEOUT_MS = 90000;
 
 // ========================================
@@ -64,6 +60,136 @@ const $ = id => document.getElementById(id);
 
 const loginPanel = $("loginPanel");
 const dashboard = $("dashboard");
+
+// ========================================
+// TEXT-TO-SPEECH (JARVIS की आवाज़)
+// ========================================
+
+let voiceEnabled = true;
+let selectedVoice = null;
+
+// Best available voice chunne ka function
+function pickBestVoice() {
+  if (!("speechSynthesis" in window)) return null;
+
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices || voices.length === 0) return null;
+
+  // Priority order:
+  // 1. Indian English Male
+  // 2. Indian English (any)
+  // 3. British English Male
+  // 4. Any English Male
+  // 5. Any English
+  // 6. Default
+
+  const priorities = [
+    v => v.lang === "en-IN" && /male/i.test(v.name),
+    v => v.lang === "en-IN",
+    v => v.lang === "en-GB" && /male/i.test(v.name),
+    v => v.lang.startsWith("en") && /male/i.test(v.name),
+    v => v.lang.startsWith("en"),
+    v => true
+  ];
+
+  for (const test of priorities) {
+    const found = voices.find(test);
+    if (found) return found;
+  }
+
+  return voices[0];
+}
+
+// Voices load hone par best voice chuno
+if ("speechSynthesis" in window) {
+  // Pehli baar turant try karo
+  selectedVoice = pickBestVoice();
+
+  // Agar pehli baar nahi mile, to voices-changed event par
+  window.speechSynthesis.onvoiceschanged = () => {
+    selectedVoice = pickBestVoice();
+    if (selectedVoice) {
+      console.log("JARVIS voice ready:", selectedVoice.name, selectedVoice.lang);
+    }
+  };
+}
+
+// JARVIS bolne ka function
+function speak(text) {
+  if (!voiceEnabled) return;
+
+  if (!("speechSynthesis" in window)) {
+    console.warn("TTS not supported in this browser");
+    return;
+  }
+
+  // Agar pehle se bol raha hai, to rok do
+  window.speechSynthesis.cancel();
+
+  // Agar selectedVoice null hai, fresh try karo
+  if (!selectedVoice) {
+    selectedVoice = pickBestVoice();
+  }
+
+  const utterance = new SpeechSynthesisUtterance(text);
+
+  // Voice settings
+  utterance.lang = selectedVoice?.lang || "en-IN";
+  utterance.rate = 1.0;    // Speed (0.5 = slow, 2.0 = fast)
+  utterance.pitch = 0.95;  // Thoda low pitch (male JARVIS feel)
+  utterance.volume = 1.0;  // Full volume
+
+  if (selectedVoice) {
+    utterance.voice = selectedVoice;
+  }
+
+  // Error handling
+  utterance.onerror = (event) => {
+    console.error("TTS ERROR:", event.error);
+  };
+
+  utterance.onend = () => {
+    console.log("JARVIS finished speaking");
+  };
+
+  window.speechSynthesis.speak(utterance);
+}
+
+// Bolna band karo
+function stopSpeaking() {
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
+}
+
+// ========================================
+// VOICE TOGGLE BUTTON
+// ========================================
+
+// Voice toggle button agar HTML me hai to setup karo
+const voiceToggleBtn = $("voiceToggle");
+
+if (voiceToggleBtn) {
+  // Initial state set karo
+  voiceToggleBtn.textContent = voiceEnabled ? "🔊 Voice: ON" : "🔇 Voice: OFF";
+
+  voiceToggleBtn.onclick = () => {
+    voiceEnabled = !voiceEnabled;
+
+    if (!voiceEnabled) {
+      stopSpeaking();
+      voiceToggleBtn.textContent = "🔇 Voice: OFF";
+      const hint = $("voiceHint");
+      if (hint) hint.textContent = "JARVIS will not speak replies";
+    } else {
+      voiceToggleBtn.textContent = "🔊 Voice: ON";
+      const hint = $("voiceHint");
+      if (hint) hint.textContent = "JARVIS will speak replies";
+    }
+
+    console.log("Voice toggled:", voiceEnabled);
+  };
+}
 
 // ========================================
 // GOOGLE LOGIN
@@ -88,6 +214,7 @@ $("loginBtn").onclick = async () => {
 
 $("logoutBtn").onclick = async () => {
   try {
+    stopSpeaking(); // Logout par bolna band karo
     await signOut(auth);
   } catch (e) {
     console.error("LOGOUT ERROR:", e);
@@ -150,7 +277,7 @@ onAuthStateChanged(auth, async user => {
 });
 
 // ========================================
-// MICROPHONE + VOICE RECOGNITION
+// MICROPHONE + VOICE RECOGNITION (STT)
 // ========================================
 
 let recognition = null;
@@ -171,6 +298,9 @@ $("micBtn").onclick = () => {
     recognition.stop();
     return;
   }
+
+  // Agar JARVIS bol raha hai to rok do
+  stopSpeaking();
 
   recognition = new SpeechRecognition();
   recognition.lang = "en-IN";
@@ -242,6 +372,9 @@ async function sendCommand() {
 
   console.log("JARVIS REQUEST:", text);
 
+  // Agar JARVIS pehle bol raha tha to band karo
+  stopSpeaking();
+
   responseBox.textContent =
     "Jarvis is waking up... (may take up to 60 seconds on first request)";
   coreState.textContent = "PROCESSING";
@@ -295,9 +428,13 @@ async function sendCommand() {
       throw new Error("Backend connected, but no JARVIS reply was received.");
     }
 
+    // UI update
     responseBox.textContent = reply;
     coreState.textContent = "ONLINE";
     console.log("JARVIS REPLY:", reply);
+
+    // 🔊 JARVIS BOLEGA!
+    speak(reply);
 
   } catch (error) {
     clearTimeout(timer);
@@ -333,4 +470,12 @@ $("commandInput").addEventListener("keydown", event => {
     event.preventDefault();
     sendCommand();
   }
+});
+
+// ========================================
+// PAGE UNLOAD — bolna band
+// ========================================
+
+window.addEventListener("beforeunload", () => {
+  stopSpeaking();
 });
