@@ -1,23 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
 
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signOut,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
-
-import {
-  getFirestore,
-  doc,
-  setDoc,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
-
-// ========================================
 // FIREBASE CONFIG
-// ========================================
 const firebaseConfig = {
   apiKey: "AIzaSyCIiomQVg4N5Fnp9u15yXasBfuny8Of6FQ",
   authDomain: "jarvis-44a31.firebaseapp.com",
@@ -28,31 +13,20 @@ const firebaseConfig = {
   measurementId: "G-B2XDSYTX8M"
 };
 
-// ========================================
-// FIREBASE INIT
-// ========================================
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// ========================================
-// BACKEND URL & SETTINGS
-// ========================================
-const JARVIS_BACKEND = "https://jarvis-7es3.onrender.com"; // आपका रेंडर URL
+// BACKEND URL
+const JARVIS_BACKEND = "https://jarvis-7es3.onrender.com"; // अपना URL यहाँ चेक करें
 const REQUEST_TIMEOUT_MS = 90000;
 
-// ========================================
-// HELPERS
-// ========================================
 const $ = id => document.getElementById(id);
-
 const loginPanel = $("loginPanel");
 const dashboard = $("dashboard");
 
-// ========================================
-// TEXT-TO-SPEECH (JARVIS की आवाज़)
-// ========================================
+// TEXT-TO-SPEECH
 let voiceEnabled = true;
 let selectedVoice = null;
 
@@ -60,206 +34,149 @@ function pickBestVoice() {
   if (!("speechSynthesis" in window)) return null;
   const voices = window.speechSynthesis.getVoices();
   if (!voices || voices.length === 0) return null;
-
-  // प्राथमिकता: इंडियन इंग्लिश मेल -> ब्रिटिश मेल -> कोई भी इंग्लिश
-  const priorities = [
-    v => v.lang === "en-IN" && /male/i.test(v.name),
-    v => v.lang === "en-IN",
-    v => v.lang === "en-GB" && /male/i.test(v.name),
-    v => v.lang.startsWith("en"),
-    v => true
-  ];
-
-  for (const test of priorities) {
-    const found = voices.find(test);
-    if (found) return found;
-  }
-  return voices[0];
+  return voices.find(v => v.lang === "en-IN" && /male/i.test(v.name)) || voices.find(v => v.lang === "en-IN") || voices[0];
 }
 
 if ("speechSynthesis" in window) {
   selectedVoice = pickBestVoice();
-  window.speechSynthesis.onvoiceschanged = () => {
-    selectedVoice = pickBestVoice();
-  };
+  window.speechSynthesis.onvoiceschanged = () => { selectedVoice = pickBestVoice(); };
 }
 
 function speak(text) {
   if (!voiceEnabled || !("speechSynthesis" in window)) return;
   window.speechSynthesis.cancel();
-  
-  if (!selectedVoice) selectedVoice = pickBestVoice();
-
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = selectedVoice?.lang || "en-IN";
-  utterance.rate = 1.0; 
-  utterance.pitch = 0.95; 
+  utterance.rate = 1.0; utterance.pitch = 0.95;
   if (selectedVoice) utterance.voice = selectedVoice;
-
   window.speechSynthesis.speak(utterance);
 }
+function stopSpeaking() { if ("speechSynthesis" in window) window.speechSynthesis.cancel(); }
 
-function stopSpeaking() {
-  if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+$("voiceToggle").onclick = () => {
+  voiceEnabled = !voiceEnabled;
+  if (!voiceEnabled) stopSpeaking();
+  $("voiceToggle").textContent = voiceEnabled ? "🔊 Voice: ON" : "🔇 Voice: OFF";
+  $("voiceHint").textContent = voiceEnabled ? "JARVIS will speak replies" : "JARVIS will not speak";
+};
+
+// CHAT UI LOGIC
+const chatContainer = $("chatContainer");
+
+function addMessage(text, sender, isError = false) {
+  // अगर पहला मैसेज "Jarvis is ready" है तो उसे हटा दें
+  if (chatContainer.children.length === 1 && chatContainer.children[0].textContent === "Jarvis is ready.") {
+    chatContainer.innerHTML = "";
+  }
+
+  const msgDiv = document.createElement("div");
+  msgDiv.classList.add("chat-message");
+  
+  if (isError) {
+    msgDiv.classList.add("jarvis-error");
+  } else {
+    msgDiv.classList.add(sender === "user" ? "user-msg" : "jarvis-msg");
+  }
+  
+  msgDiv.textContent = text;
+  chatContainer.appendChild(msgDiv);
+  chatContainer.scrollTop = chatContainer.scrollHeight; // स्क्रॉल नीचे रखें
+  return msgDiv;
 }
 
-// Voice Toggle
-const voiceToggleBtn = $("voiceToggle");
-if (voiceToggleBtn) {
-  voiceToggleBtn.onclick = () => {
-    voiceEnabled = !voiceEnabled;
-    if (!voiceEnabled) stopSpeaking();
-    voiceToggleBtn.textContent = voiceEnabled ? "🔊 Voice: ON" : "🔇 Voice: OFF";
-    const hint = $("voiceHint");
-    if (hint) hint.textContent = voiceEnabled ? "JARVIS will speak replies" : "JARVIS will not speak";
-  };
+function showTypingIndicator() {
+  const msgDiv = document.createElement("div");
+  msgDiv.classList.add("chat-message", "jarvis-msg");
+  msgDiv.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+  chatContainer.appendChild(msgDiv);
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+  return msgDiv;
 }
 
-// ========================================
-// GOOGLE LOGIN / LOGOUT
-// ========================================
+// AUTH
 $("loginBtn").onclick = async () => {
   $("loginMessage").textContent = "Opening Google sign-in…";
-  try {
-    await signInWithPopup(auth, provider);
-  } catch (e) {
-    console.error("LOGIN ERROR:", e);
-    $("loginMessage").textContent = e.code === "auth/popup-blocked" ? "Popup blocked. Allow popups." : e.message;
-  }
+  try { await signInWithPopup(auth, provider); } 
+  catch (e) { $("loginMessage").textContent = e.message; }
 };
 
 $("logoutBtn").onclick = async () => {
-  try {
-    stopSpeaking();
-    await signOut(auth);
-  } catch (e) {
-    console.error("LOGOUT ERROR:", e);
-  }
+  stopSpeaking(); await signOut(auth);
 };
 
-// ========================================
-// AUTH STATE
-// ========================================
 onAuthStateChanged(auth, async user => {
   if (!user) {
     loginPanel.classList.remove("hidden");
     dashboard.classList.add("hidden");
-    $("statusText").textContent = "OFFLINE";
-    $("statusDot").style.background = "#596773";
-    $("coreState").textContent = "STANDBY";
-    $("greeting").textContent = "Awaiting authentication.";
+    $("statusText").textContent = "OFFLINE"; $("statusDot").style.background = "#596773";
+    $("coreState").textContent = "STANDBY"; $("greeting").textContent = "Awaiting authentication.";
     return;
   }
-
-  loginPanel.classList.add("hidden");
-  dashboard.classList.remove("hidden");
-
-  $("statusText").textContent = "ONLINE";
-  $("statusDot").style.background = "#64dfff";
-  $("coreState").textContent = "ONLINE";
-  $("greeting").textContent = `Welcome, ${user.displayName || "Operator"}. Jarvis is ready.`;
-  $("userName").textContent = user.displayName || "Jarvis User";
-  $("userEmail").textContent = user.email || "";
+  loginPanel.classList.add("hidden"); dashboard.classList.remove("hidden");
+  $("statusText").textContent = "ONLINE"; $("statusDot").style.background = "#64dfff";
+  $("coreState").textContent = "ONLINE"; $("greeting").textContent = `Welcome, ${user.displayName || "Operator"}.`;
+  $("userName").textContent = user.displayName || "Jarvis User"; $("userEmail").textContent = user.email || "";
   $("authState").textContent = "CONNECTED";
 
-  // Firestore Sync
   try {
-    await setDoc(
-      doc(db, "users", user.uid),
-      {
-        uid: user.uid,
-        name: user.displayName || "",
-        email: user.email || "",
-        photoURL: user.photoURL || "",
-        lastLogin: serverTimestamp()
-      },
-      { merge: true }
-    );
+    await setDoc(doc(db, "users", user.uid), { uid: user.uid, name: user.displayName || "", email: user.email || "", lastLogin: serverTimestamp() }, { merge: true });
     $("profileState").textContent = "SYNCED";
-  } catch (e) {
-    console.error("FIRESTORE ERROR:", e);
-    $("profileState").textContent = "ERROR";
-  }
+  } catch (e) { $("profileState").textContent = "ERROR"; }
 });
 
-// ========================================
-// MICROPHONE + VOICE RECOGNITION (STT)
-// ========================================
+// MICROPHONE
 let recognition = null;
 let isListening = false;
+const micBtn = $("micBtn");
 
-$("micBtn").onclick = () => {
+micBtn.onclick = () => {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    $("micText").textContent = "Voice recognition not supported. Use Chrome.";
-    return;
-  }
-  if (isListening && recognition) {
-    recognition.stop();
-    return;
-  }
-  stopSpeaking(); // बोलना बंद करो
+  if (!SpeechRecognition) { addMessage("Voice recognition not supported. Use Chrome.", "jarvis", true); return; }
+  
+  if (isListening && recognition) { recognition.stop(); return; }
+  stopSpeaking();
 
   recognition = new SpeechRecognition();
-  recognition.lang = "en-IN";
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
+  recognition.lang = "en-IN"; recognition.interimResults = false; recognition.maxAlternatives = 1;
 
   recognition.onstart = () => {
-    isListening = true;
-    $("micIndicator").classList.add("on");
-    $("micIndicator").innerHTML = "<span></span> LISTENING";
-    $("coreState").textContent = "LISTENING";
-    $("micText").textContent = "Listening... speak now.";
+    isListening = true; micBtn.classList.add("listening");
+    $("micIndicator").classList.add("on"); $("micIndicator").innerHTML = "<span></span> LISTENING";
+    $("coreState").textContent = "LISTENING"; $("micText").textContent = "Listening... speak now.";
   };
 
   recognition.onresult = event => {
-    const transcript = event.results[0][0].transcript;
-    console.log("VOICE COMMAND:", transcript);
-    $("commandInput").value = transcript;
+    $("commandInput").value = event.results[0][0].transcript;
     sendCommand();
   };
 
   recognition.onerror = event => {
-    isListening = false;
-    $("coreState").textContent = "ONLINE";
-    $("micIndicator").innerHTML = "<span></span> MIC READY";
-    $("micIndicator").classList.remove("on");
-    $("micText").textContent = event.error === "not-allowed" ? "Mic permission denied." : `Voice error: ${event.error}`;
+    isListening = false; micBtn.classList.remove("listening");
+    $("micIndicator").innerHTML = "<span></span> MIC OFF"; $("micIndicator").classList.remove("on");
+    $("micText").textContent = `Error: ${event.error}`;
   };
 
   recognition.onend = () => {
-    isListening = false;
+    isListening = false; micBtn.classList.remove("listening");
     $("coreState").textContent = "ONLINE";
-    $("micIndicator").innerHTML = "<span></span> MIC READY";
-    $("micIndicator").classList.remove("on");
+    $("micIndicator").innerHTML = "<span></span> MIC READY"; 
+    if ($("micText").textContent.includes("Listening")) $("micText").textContent = "Click mic to speak.";
   };
 
-  try { recognition.start(); } 
-  catch (e) { $("micText").textContent = e.message; }
+  try { recognition.start(); } catch (e) { addMessage(e.message, "jarvis", true); }
 };
 
-// ========================================
-// SEND COMMAND & CHAT ANIMATION
-// ========================================
+// SEND COMMAND
 async function sendCommand() {
   const input = $("commandInput");
-  const responseBox = $("response");
-  const coreState = $("coreState");
-
   const text = input.value.trim();
-  if (!text) {
-    responseBox.textContent = "Please enter a command.";
-    return;
-  }
+  if (!text) return;
 
   stopSpeaking();
-  
-  // Typing Animation start
-  responseBox.textContent = "JARVIS is analyzing";
-  responseBox.classList.add("thinking");
-  coreState.textContent = "PROCESSING";
+  addMessage(text, "user"); // यूज़र का मैसेज ऐड करें
   input.value = "";
+  
+  $("coreState").textContent = "PROCESSING";
+  const typingMsg = showTypingIndicator(); // टाइपिंग एनिमेशन दिखाएं
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -267,58 +184,34 @@ async function sendCommand() {
   try {
     const response = await fetch(JARVIS_BACKEND + "/api/chat", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: text }),
       signal: controller.signal
     });
 
     clearTimeout(timer);
-    const contentType = response.headers.get("content-type") || "";
-    let data;
-
-    if (contentType.includes("application/json")) {
-      data = await response.json();
-    } else {
-      throw new Error(`Backend returned ${response.status} instead of JSON.`);
-    }
+    const data = await response.json();
+    typingMsg.remove(); // टाइपिंग हटाएं
 
     if (!response.ok) throw new Error(data?.error || `Server error: ${response.status}`);
     const reply = data?.reply;
     if (!reply) throw new Error("No JARVIS reply received.");
 
-    // Typing animation stop & Show reply
-    responseBox.classList.remove("thinking");
-    responseBox.textContent = reply;
-    coreState.textContent = "ONLINE";
-
-    speak(reply); // 🔊 JARVIS BOLEGA
+    addMessage(reply, "jarvis"); // JARVIS का जवाब दिखाएं
+    $("coreState").textContent = "ONLINE";
+    speak(reply); // 🔊 बोलें
 
   } catch (error) {
     clearTimeout(timer);
-    responseBox.classList.remove("thinking"); // Error पर भी हटाएँ
-    
+    typingMsg.remove();
     let friendlyMsg = error?.message || "Unknown error";
-    if (error.name === "AbortError") {
-      friendlyMsg = "Request timed out. Please try again.";
-    } else if (error.message?.includes("Failed to fetch")) {
-      friendlyMsg = "Cannot reach JARVIS backend. Check Render.";
-    }
+    if (error.name === "AbortError") friendlyMsg = "Request timed out.";
     
-    responseBox.textContent = "JARVIS ERROR: " + friendlyMsg;
-    coreState.textContent = "ERROR";
+    addMessage(friendlyMsg, "jarvis", true); // एरर मैसेज
+    $("coreState").textContent = "ERROR";
   }
 }
 
-// ========================================
-// SEND BUTTON & ENTER KEY
-// ========================================
 $("sendBtn").onclick = sendCommand;
-
-$("commandInput").addEventListener("keydown", event => {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    sendCommand();
-  }
-});
-
+$("commandInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); sendCommand(); } });
 window.addEventListener("beforeunload", () => stopSpeaking());
