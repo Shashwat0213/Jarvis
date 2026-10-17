@@ -3,11 +3,6 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <meta http-equiv="X-Content-Type-Options" content="nosniff">
-  <meta name="referrer" content="strict-origin-when-cross-origin">
-  <meta http-equiv="Permissions-Policy" content="microphone=(self)">
-
   <title>JARVIS AI — V1</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -57,63 +52,54 @@
       </div>
 
       <div class="grid">
-        <div class="panel">
+        <!-- नया प्रोफेशनल माइक बटन -->
+        <div class="panel mic-panel">
           <div class="eyebrow">VOICE CONTROL</div>
           <h3>Microphone</h3>
-          <p id="micText">Microphone is not enabled.</p>
-          <button id="micBtn" class="primary">Enable Microphone</button>
-          <div class="mic-indicator" id="micIndicator">
-            <span></span> MIC OFF
+          <div class="mic-circle-wrap">
+            <button id="micBtn" class="mic-circle">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+            </button>
           </div>
+          <p id="micText">Click mic to speak.</p>
+          <div class="mic-indicator" id="micIndicator"><span></span> MIC OFF</div>
         </div>
 
         <div class="panel">
           <div class="eyebrow">SYSTEM</div>
           <h3>Jarvis Core</h3>
-          <div class="system-row">
-            <span>Firebase Auth</span>
-            <b id="authState">READY</b>
-          </div>
-          <div class="system-row">
-            <span>Cloud profile</span>
-            <b id="profileState">WAITING</b>
-          </div>
-          <div class="system-row">
-            <span>AI Brain</span>
-            <b>GEMINI</b>
-          </div>
-          <div class="system-row">
-            <span>Backend</span>
-            <b>RENDER</b>
-          </div>
+          <div class="system-row"><span>Firebase Auth</span><b id="authState">READY</b></div>
+          <div class="system-row"><span>Cloud profile</span><b id="profileState">WAITING</b></div>
+          <div class="system-row"><span>AI Brain</span><b>GEMINI</b></div>
+          <div class="system-row"><span>Backend</span><b>RENDER</b></div>
         </div>
       </div>
 
       <div class="panel command">
         <div class="eyebrow">COMMAND CONSOLE</div>
+        
+        <!-- चैट डिस्प्ले एरिया (स्क्रॉल होने वाला) -->
+        <div class="chat-container" id="chatContainer">
+          <div class="chat-message jarvis-msg">Jarvis is ready.</div>
+        </div>
 
         <div class="command-line">
           <span>›</span>
-          <input
-            id="commandInput"
-            placeholder="Speak or type a command..."
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-            spellcheck="false"
-          >
-          <button id="sendBtn" class="primary small">SEND</button>
+          <input id="commandInput" placeholder="Type a command or ask anything..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+          <button id="sendBtn" class="primary small">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+          </button>
         </div>
 
-        <!-- 🆕 Voice Toggle Row -->
-        <div style="margin-top:10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <div class="voice-toggle-row">
           <button id="voiceToggle" class="secondary small">🔊 Voice: ON</button>
-          <span id="voiceHint" style="font-size:11px; color:#70a0b5; letter-spacing:.08em;">
-            JARVIS will speak replies
-          </span>
+          <span id="voiceHint" class="hint-text">JARVIS will speak replies</span>
         </div>
-
-        <div id="response" class="response">Jarvis is ready.</div>
       </div>
     </section>
 
