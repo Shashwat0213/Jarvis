@@ -15,21 +15,19 @@
         <div class="brand-dot"></div>
         <div class="brand-name">J.A.R.V.I.S</div>
       </div>
-      <div class="status"><span id="statusDot"></span><span id="statusText">OFFLINE</span></div>
+      <div class="status"><span id="statusDot"></span><span id="statusText">CONNECTING...</span></div>
     </header>
 
-    <!-- LOGIN PANEL -->
-    <section class="panel login-panel" id="loginPanel">
+    <!-- LOGIN PANEL (Shuru mein hidden rahega) -->
+    <section class="panel login-panel hidden" id="loginPanel">
       <h2>System Lock</h2>
       <p>Authorize access to initialize J.A.R.V.I.S.</p>
       <button id="loginBtn" class="primary">Authenticate via Google</button>
-      <div id="loginMessage" class="message"></div>
     </section>
 
-    <!-- DASHBOARD -->
+    <!-- DASHBOARD (Shuru mein hidden rahega) -->
     <section class="dashboard hidden" id="dashboard">
       
-      <!-- JARVIS Animated Core -->
       <div class="jarvis-hero">
         <div class="radar-container">
           <div class="ring-outer"></div>
@@ -38,10 +36,9 @@
           <div class="ring-core"></div>
           <div class="jarvis-text">JARVIS</div>
         </div>
-        <div id="coreState" class="core-status">STANDBY</div>
+        <div id="coreState" class="core-status">ONLINE</div>
       </div>
 
-      <!-- Chat Console -->
       <div class="panel console-panel">
         <div class="chat-container" id="chatContainer">
           <div class="msg jarvis">System online. Ready for commands, Sir.</div>
@@ -55,7 +52,6 @@
         </div>
       </div>
 
-      <!-- Mic & System -->
       <div class="bottom-grid">
         <div class="panel mic-panel">
           <div class="mic-status" id="micIndicator">MIC OFF</div>
