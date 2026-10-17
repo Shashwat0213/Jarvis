@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -18,13 +18,16 @@ const provider = new GoogleAuthProvider();
 const JARVIS_BACKEND = "https://jarvis-7es3.onrender.com"; 
 const $ = id => document.getElementById(id);
 
+// 🔥 1. सबसे ज़रूरी फिक्स: लॉगिन याद रखने के लिए
+setPersistence(auth, browserLocalPersistence).catch(console.error);
+
 // TTS (Voice)
 let voiceEnabled = true;
 let selectedVoice = null;
 if ("speechSynthesis" in window) {
   const loadVoices = () => {
     const v = window.speechSynthesis.getVoices();
-    selectedVoice = v.find(x => x.lang === "en-IN" && /male/i.test(x.name)) || v.find(x => x.lang.startsWith("en")) || v[0];
+    selectedVoice = v.find(x => x.lang === "en-IN") || v.find(x => x.lang.startsWith("en")) || v[0];
   };
   loadVoices();
   window.speechSynthesis.onvoiceschanged = loadVoices;
@@ -33,25 +36,24 @@ function speak(text) {
   if (!voiceEnabled || !("speechSynthesis" in window)) return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.rate = 1.0; u.pitch = 0.95;
   if (selectedVoice) u.voice = selectedVoice;
   window.speechSynthesis.speak(u);
 }
 
-$("voiceToggle").onclick = () => {
-  voiceEnabled = !voiceEnabled;
-  $("voiceToggle").textContent = voiceEnabled ? "🔊 Voice ON" : "🔇 Voice OFF";
-};
-
-// Auth & Sync
+// Auth Buttons
 $("loginBtn").onclick = () => signInWithPopup(auth, provider).catch(e => alert(e.message));
 $("logoutBtn").onclick = () => signOut(auth);
 
+// 🔥 2. Auth State Fix: System Lock को बार-बार दिखने से रोकना
 onAuthStateChanged(auth, async user => {
+  // पहले दोनों को छुपा दें
+  $("loginPanel").classList.add("hidden");
+  $("dashboard").classList.add("hidden");
+
   if (user) {
-    $("loginPanel").classList.add("hidden");
+    // अगर लॉगिन है, तो डैशबोर्ड दिखाएं
     $("dashboard").classList.remove("hidden");
-    $("statusText").textContent = "ONLINE";
+    $("statusText").textContent = "ONLINE"; 
     $("statusDot").style.background = "#00ff88";
     $("userName").textContent = user.displayName || "User";
     $("authState").textContent = "CONNECTED";
@@ -65,16 +67,14 @@ onAuthStateChanged(auth, async user => {
       $("profileState").textContent = "ERROR";
     }
   } else {
+    // अगर लॉगआउट है, तो लॉगिन पैनल दिखाएं
     $("loginPanel").classList.remove("hidden");
-    $("dashboard").classList.add("hidden");
-    $("statusText").textContent = "OFFLINE";
+    $("statusText").textContent = "OFFLINE"; 
     $("statusDot").style.background = "#555";
-    $("profileState").textContent = "WAITING";
-    $("userName").textContent = "—";
   }
 });
 
-// Chat System
+// Chat Logic
 const chatBox = $("chatContainer");
 function addMsg(text, sender, isError = false) {
   if (chatBox.children.length === 1 && chatBox.children[0].textContent.includes("System online")) chatBox.innerHTML = "";
@@ -97,18 +97,13 @@ async function sendCommand() {
   
   try {
     const res = await fetch(JARVIS_BACKEND + "/api/chat", {
-      method: "POST", 
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: text })
     });
     const data = await res.json();
     typing.remove();
-    if (data.reply) { 
-      addMsg(data.reply, "jarvis"); 
-      speak(data.reply); 
-    } else {
-      throw new Error();
-    }
+    if (data.reply) { addMsg(data.reply, "jarvis"); speak(data.reply); }
+    else throw new Error();
   } catch (e) {
     typing.remove();
     addMsg("Error connecting to backend.", "jarvis", true);
@@ -118,7 +113,7 @@ async function sendCommand() {
 $("sendBtn").onclick = sendCommand;
 $("commandInput").addEventListener("keydown", e => { if (e.key === "Enter") sendCommand(); });
 
-// Mic & Wake Word
+// Mic Logic
 let rec = null;
 const micBtn = $("micBtn");
 micBtn.onclick = () => {
