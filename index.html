@@ -3,90 +3,106 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>J.A.R.V.I.S — Mark VII Interface</title>
+  <title>J.A.R.V.I.S — Holographic OS</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Background Scanning Effect -->
+  <!-- 3D Background Effects -->
+  <div class="holo-grid"></div>
+  <div class="ambient-glow"></div>
   <div class="scanlines"></div>
-  <div class="bg-glow"></div>
 
   <main class="app">
-    <!-- TOP HUD PANEL -->
+    <!-- TOP HUD -->
     <header class="top-hud">
-      <div class="hud-panel top-left">
-        <div class="sys-text">SYS: ONLINE</div>
-        <div class="sys-sub" id="authState">AUTH: WAITING</div>
+      <div class="hud-panel small-panel">
+        <div class="hud-label">SYS STATUS</div>
+        <div class="hud-value" id="statusText">STANDBY</div>
       </div>
       <div class="brand-title">J.A.R.V.I.S</div>
-      <div class="hud-panel top-right">
-        <div class="sys-text" id="statusText">STANDBY</div>
-        <div class="sys-sub">CLOUD: <span id="profileState">WAITING</span></div>
+      <div class="hud-panel small-panel align-right">
+        <div class="hud-label">AUTH</div>
+        <div class="hud-value" id="authState">WAITING</div>
       </div>
     </header>
 
-    <!-- LOGIN PANEL (If not authenticated) -->
-    <section class="login-panel hidden" id="loginPanel">
-      <h2>SYSTEM LOCK</h2>
-      <p>Authorize access to initialize J.A.R.V.I.S.</p>
-      <button id="loginBtn" class="btn-hud">Authenticate via Google</button>
+    <!-- LOGIN OVERLAY -->
+    <section class="login-overlay hidden" id="loginPanel">
+      <div class="hud-panel login-box">
+        <h2>SYSTEM LOCK</h2>
+        <p>Biometric authorization required.</p>
+        <button id="loginBtn" class="btn-hud">Authenticate Operator</button>
+      </div>
     </section>
 
     <!-- MAIN DASHBOARD -->
     <section class="dashboard hidden" id="dashboard">
       
-      <!-- 1. CENTRAL CORE (THE ORB) -->
-      <div class="core-container">
-        <!-- Data Rings -->
-        <div class="ring ring-inner"></div>
-        <div class="ring ring-mid"></div>
-        <div class="ring ring-outer"></div>
+      <!-- 1. THE 3D HOLOGRAM CORE (Inspired by your photos) -->
+      <div class="core-wrapper">
+        <!-- Rotating 3D Sphere (CSS Dots) -->
+        <div class="sphere-dots"></div>
         
-        <!-- The Orb -->
-        <div class="orb" id="coreState">
-          <div class="orb-inner"></div>
-          <div class="orb-text">J.A.R.V.I.S</div>
+        <!-- Holographic Rings -->
+        <div class="ring ring-1"></div>
+        <div class="ring ring-2"></div>
+        <div class="ring ring-3"></div>
+        <div class="ring ring-4"></div>
+        
+        <!-- Center Core Text -->
+        <div class="core-text-container">
+          <div class="core-text" id="coreState">ONLINE</div>
+          <div class="core-subtext">A.I. CORE</div>
         </div>
+        
+        <!-- Crosshairs -->
+        <div class="crosshair h"></div>
+        <div class="crosshair v"></div>
       </div>
 
-      <!-- 2. CHAT / DATA CONSOLE -->
-      <div class="hud-panel console-panel">
-        <div class="panel-header">
-          <span>NEURAL INTERFACE</span>
-          <span class="blinking-dot"></span>
+      <!-- 2. CHAT TERMINAL -->
+      <div class="hud-panel terminal-panel">
+        <div class="terminal-header">
+          <span class="dot red"></span>
+          <span class="dot yellow"></span>
+          <span class="dot green"></span>
+          <span class="terminal-title">NEURAL LINK ESTABLISHED</span>
         </div>
         <div class="chat-container" id="chatContainer">
-          <div class="msg jarvis">Systems initialized. How may I assist you, Sir?</div>
+          <div class="msg jarvis">All systems operational. Awaiting your command, Sir.</div>
         </div>
         <div class="input-area">
-          <span class="prompt">></span>
-          <input id="commandInput" placeholder="Type or say 'Hey Jarvis'..." autocomplete="off">
-          <button id="sendBtn" class="btn-send">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-          </button>
+          <span class="prompt">root@jarvis:~$</span>
+          <input id="commandInput" placeholder="Enter command..." autocomplete="off">
+          <button id="sendBtn" class="btn-send">EXECUTE</button>
         </div>
       </div>
 
-      <!-- 3. FLOATING DATA PANELS (Controls) -->
+      <!-- 3. FLOATING DATA PANELS -->
       <div class="controls-grid">
-        <div class="hud-panel mic-panel">
-          <div class="mic-status" id="micIndicator">VOICE MODULE: OFF</div>
+        <!-- Mic Control -->
+        <div class="hud-panel control-box">
+          <div class="hud-label">VOICE RECOGNITION</div>
+          <div class="mic-status" id="micIndicator">OFFLINE</div>
           <button id="micBtn" class="btn-mic">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
           </button>
-          <div class="voice-controls">
-            <button id="voiceToggle" class="btn-text">🔊 Audio ON</button>
-            <button id="logoutBtn" class="btn-text text-danger">Log Out</button>
+          <div class="btn-row">
+            <button id="voiceToggle" class="btn-text">🔊 AUDIO: ON</button>
+            <button id="logoutBtn" class="btn-text danger">DISCONNECT</button>
           </div>
         </div>
 
-        <div class="hud-panel profile-panel">
-          <div class="data-row"><span>OPERATOR</span><b id="userName">—</b></div>
-          <div class="data-row"><span>NETWORK</span><b class="text-cyan">SECURE</b></div>
-          <div class="data-row"><span>AI ENGINE</span><b class="text-cyan">GEMINI</b></div>
-          <div class="data-row"><span>NODE</span><b class="text-cyan">RENDER</b></div>
+        <!-- System Stats -->
+        <div class="hud-panel control-box">
+          <div class="hud-label">OPERATOR DATA</div>
+          <div class="data-row"><span>ID</span><b id="userName">—</b></div>
+          <div class="data-row"><span>UPLINK</span><b class="cyan-text" id="profileState">WAITING</b></div>
+          <div class="data-row"><span>NETWORK</span><b class="cyan-text">SECURE</b></div>
+          <div class="data-row"><span>PROCESSOR</span><b class="cyan-text">GEMINI</b></div>
         </div>
       </div>
+
     </section>
   </main>
 
