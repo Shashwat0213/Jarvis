@@ -13,8 +13,7 @@ const PORT = process.env.PORT || 3000;
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// यहाँ मॉडल्स का क्रम (Priority) तय करें
-// 1. पहले 3.8-flash ट्राई होगा, फिर 3.5-flash-lite, फिर 2.5-flash
+// स्मार्ट स्विचिंग के लिए मॉडल्स का क्रम
 const MODEL_CHAIN = [
   "gemini-3.8-flash",
   "gemini-3.5-flash-lite",
@@ -104,8 +103,20 @@ async function callGemini(model, message) {
       },
       signal: controller.signal,
       body: JSON.stringify({
+        // 🧠 यहाँ JARVIS की पर्सनालिटी और प्रोजेक्ट्स की जानकारी दी गई है
         systemInstruction: {
-          parts: [{ text: "You are JARVIS, a helpful personal AI assistant. Be clear, intelligent, concise and friendly." }]
+          parts: [{ 
+            text: "You are JARVIS, the highly intelligent and loyal personal AI assistant created by Shashwat. " +
+                  "You speak with a polite, confident, and slightly witty British tone. " +
+                  "Address Shashwat as 'Sir' or 'Shashwat' occasionally. " +
+                  "Do not sound like a generic search engine; sound like a trusted partner. " +
+                  
+                  "Here is information about Shashwat's projects: " +
+                  "1. CINEVAULT: A personal web project for movies (like a movie vault or tracker). " +
+                  "2. MCU TRACKER: A web project dedicated to tracking Marvel Cinematic Universe (MCU) movies, shows, and timelines. " +
+                  
+                  "If Shashwat asks about these projects, provide helpful answers, ideas, or discuss them based on this context."
+          }]
         },
         contents: [{ role: "user", parts: [{ text: message }] }],
         generationConfig: { temperature: 0.7, maxOutputTokens: 1024 }
@@ -144,7 +155,6 @@ async function getJarvisReply(message) {
     } catch (err) {
       console.warn(`Model ${model} failed:`, err.message);
       errors.push(`${model}: ${err.message}`);
-      // अगले मॉडल पर जाएँ
     }
   }
   throw new Error(`All models failed:\n${errors.join("\n")}`);
@@ -158,6 +168,7 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     provider: "Gemini",
+    persona: "JARVIS (Personal Assistant for Shashwat)",
     models: MODEL_CHAIN,
     apiKey: GEMINI_API_KEY ? "configured" : "MISSING",
     message: "Jarvis backend is running."
@@ -177,7 +188,9 @@ app.post("/api/chat", rateLimit, async (req, res) => {
     console.log("JARVIS COMMAND:", message);
     const { reply, model } = await getJarvisReply(message);
     console.log(`JARVIS REPLY (via ${model}):`, reply);
+    
     res.json({ reply, model });
+
   } catch (error) {
     console.error("JARVIS SERVER ERROR:", error);
     res.status(500).json({ error: "Jarvis is currently unable to respond. Please try again." });
