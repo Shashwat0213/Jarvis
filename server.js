@@ -8,18 +8,17 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ========================================
-// CONFIG (OpenRouter)
+// CONFIG (Gemini Fallback Chain)
 // ========================================
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// नए और चालू फ्री मॉडल्स की लिस्ट
+// यहाँ मॉडल्स का क्रम (Priority) तय करें
+// 1. पहले 3.8-flash ट्राई होगा, फिर 3.5-flash-lite, फिर 2.5-flash
 const MODEL_CHAIN = [
-  "meta-llama/llama-3.3-70b-instruct:free",   // 1. सबसे स्मार्ट फ्री मॉडल
-  "openai/gpt-oss-20b:free",                  // 2. OpenAI का फ्री मॉडल
-  "qwen/qwen3.6-plus:free",                   // 3. Qwen का फ्री मॉडल
-  "google/gemma-2-9b-it:free"                 // 4. Google का फ्री मॉडल
+  "gemini-3.8-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-2.5-flash"
 ];
 
 const ALLOWED_ORIGINS = [
@@ -81,45 +80,35 @@ function rateLimit(req, res, next) {
   rateLimitMap.set(ip, entry);
 
   if (entry.count > RATE_LIMIT_MAX) {
-    return res.status(429).json({
-      error: "Too many requests. Please wait a minute."
-    });
+    return res.status(429).json({ error: "Too many requests. Please wait a minute." });
   }
   next();
 }
 
 // ========================================
-// OPENROUTER API CALL
+// GEMINI API CALL (Single Model)
 // ========================================
 
-async function callOpenRouter(model, message) {
+async function callGemini(model, message) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 25000);
 
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+
   try {
-    const response = await fetch(OPENROUTER_URL, {
+    const response = await fetch(url, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://shashwat0213.github.io/Jarvis/", 
-        "X-Title": "JARVIS AI" 
+        "x-goog-api-key": GEMINI_API_KEY
       },
       signal: controller.signal,
       body: JSON.stringify({
-        model: model,
-        messages: [
-          {
-            role: "system",
-            content: "You are JARVIS, a helpful personal AI assistant. Be clear, intelligent, concise and friendly."
-          },
-          {
-            role: "user",
-            content: message
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 1024
+        systemInstruction: {
+          parts: [{ text: "You are JARVIS, a helpful personal AI assistant. Be clear, intelligent, concise and friendly." }]
+        },
+        contents: [{ role: "user", parts: [{ text: message }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 }
       })
     });
 
@@ -130,11 +119,10 @@ async function callOpenRouter(model, message) {
       throw new Error(`${model} failed: ${data?.error?.message || response.status}`);
     }
 
-    const reply = data?.choices?.[0]?.message?.content?.trim();
+    const reply = data?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("").trim();
     if (!reply) throw new Error(`${model} returned empty response`);
 
     return reply;
-
   } catch (err) {
     clearTimeout(timeout);
     throw err;
@@ -142,7 +130,7 @@ async function callOpenRouter(model, message) {
 }
 
 // ========================================
-// SMART FALLBACK
+// SMART FALLBACK (Try all models)
 // ========================================
 
 async function getJarvisReply(message) {
@@ -150,12 +138,13 @@ async function getJarvisReply(message) {
   for (const model of MODEL_CHAIN) {
     try {
       console.log(`Trying model: ${model}`);
-      const reply = await callOpenRouter(model, message);
+      const reply = await callGemini(model, message);
       console.log(`SUCCESS with model: ${model}`);
       return { reply, model };
     } catch (err) {
       console.warn(`Model ${model} failed:`, err.message);
       errors.push(`${model}: ${err.message}`);
+      // अगले मॉडल पर जाएँ
     }
   }
   throw new Error(`All models failed:\n${errors.join("\n")}`);
@@ -168,11 +157,9 @@ async function getJarvisReply(message) {
 app.get("/", (req, res) => {
   res.json({
     status: "online",
-    system: "JARVIS",
-    version: "V3",
-    provider: "OpenRouter",
+    provider: "Gemini",
     models: MODEL_CHAIN,
-    apiKey: OPENROUTER_API_KEY ? "configured" : "MISSING",
+    apiKey: GEMINI_API_KEY ? "configured" : "MISSING",
     message: "Jarvis backend is running."
   });
 });
@@ -180,21 +167,17 @@ app.get("/", (req, res) => {
 app.post("/api/chat", rateLimit, async (req, res) => {
   try {
     const { message } = req.body;
-
     if (!message || typeof message !== "string") {
       return res.status(400).json({ error: "Message is required." });
     }
-
-    if (!OPENROUTER_API_KEY) {
-      return res.status(500).json({ error: "AI service is not configured on the server." });
+    if (!GEMINI_API_KEY) {
+      return res.status(500).json({ error: "AI service is not configured." });
     }
 
     console.log("JARVIS COMMAND:", message);
     const { reply, model } = await getJarvisReply(message);
     console.log(`JARVIS REPLY (via ${model}):`, reply);
-
     res.json({ reply, model });
-
   } catch (error) {
     console.error("JARVIS SERVER ERROR:", error);
     res.status(500).json({ error: "Jarvis is currently unable to respond. Please try again." });
@@ -207,7 +190,7 @@ app.post("/api/chat", rateLimit, async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`JARVIS backend running on port ${PORT}`);
-  console.log(`Provider: OpenRouter`);
-  console.log(`Model chain: ${MODEL_CHAIN.join(" → ")}`);
-  console.log(`API key: ${OPENROUTER_API_KEY ? "OK" : "MISSING"}`);
+  console.log(`Provider: Gemini (Fallback Chain)`);
+  console.log(`Models: ${MODEL_CHAIN.join(" → ")}`);
+  console.log(`API key: ${GEMINI_API_KEY ? "OK" : "MISSING"}`);
 });
