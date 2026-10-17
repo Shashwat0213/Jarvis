@@ -10,7 +10,6 @@
   <div class="bg-glow"></div>
 
   <main class="app">
-    <!-- HEADER -->
     <header class="topbar">
       <div class="brand">
         <div class="brand-dot"></div>
@@ -19,7 +18,7 @@
       <div class="status"><span id="statusDot"></span><span id="statusText">OFFLINE</span></div>
     </header>
 
-    <!-- LOGIN PANEL (Pehle ye dikhega) -->
+    <!-- LOGIN PANEL -->
     <section class="panel login-panel" id="loginPanel">
       <h2>System Lock</h2>
       <p>Authorize access to initialize J.A.R.V.I.S.</p>
@@ -27,10 +26,10 @@
       <div id="loginMessage" class="message"></div>
     </section>
 
-    <!-- DASHBOARD (Login ke baad ye dikhega) -->
+    <!-- DASHBOARD -->
     <section class="dashboard hidden" id="dashboard">
       
-      <!-- 1. ANIMATED JARVIS CORE -->
+      <!-- JARVIS Animated Core -->
       <div class="jarvis-hero">
         <div class="radar-container">
           <div class="ring-outer"></div>
@@ -42,21 +41,21 @@
         <div id="coreState" class="core-status">STANDBY</div>
       </div>
 
-      <!-- 2. CHAT CONSOLE -->
+      <!-- Chat Console -->
       <div class="panel console-panel">
         <div class="chat-container" id="chatContainer">
           <div class="msg jarvis">System online. Ready for commands, Sir.</div>
         </div>
         <div class="input-area">
           <span class="prompt">›</span>
-          <input id="commandInput" placeholder="Type a command or say 'Hey Jarvis'..." autocomplete="off">
+          <input id="commandInput" placeholder="Type command..." autocomplete="off">
           <button id="sendBtn" class="btn-send">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
           </button>
         </div>
       </div>
 
-      <!-- 3. CONTROLS & STATUS -->
+      <!-- Mic & System -->
       <div class="bottom-grid">
         <div class="panel mic-panel">
           <div class="mic-status" id="micIndicator">MIC OFF</div>
@@ -70,7 +69,6 @@
           <div class="sys-row"><span>Operator</span><b id="userName">—</b></div>
           <div class="sys-row"><span>Auth</span><b id="authState">WAITING</b></div>
           <div class="sys-row"><span>Cloud Sync</span><b id="profileState">WAITING</b></div>
-          <div class="sys-row"><span>Network</span><b class="text-green">ONLINE</b></div>
           <button id="logoutBtn" class="btn-logout">Sign Out</button>
         </div>
       </div>
