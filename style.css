@@ -7,7 +7,6 @@ body { font-family: 'Inter', sans-serif; background: #03070a; color: #e9f7ff; mi
 .bg-glow { position: fixed; inset: 0; background: radial-gradient(circle at 50% 0%, rgba(0,150,255,0.15), transparent 60%); z-index: -1; }
 .app { max-width: 800px; margin: 0 auto; padding: 20px; }
 
-/* Header */
 .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand-dot { width: 12px; height: 12px; background: #00aaff; border-radius: 50%; box-shadow: 0 0 15px #00aaff; animation: pulse 2s infinite; }
@@ -15,7 +14,6 @@ body { font-family: 'Inter', sans-serif; background: #03070a; color: #e9f7ff; mi
 .status { font-size: 12px; display: flex; align-items: center; gap: 6px; font-family: 'Orbitron', sans-serif; }
 #statusDot { width: 8px; height: 8px; background: #555; border-radius: 50%; transition: 0.3s; }
 
-/* Panels */
 .panel { background: rgba(10,15,25,0.7); border: 1px solid rgba(0,150,255,0.2); border-radius: 16px; padding: 20px; backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
 .login-panel { text-align: center; margin-top: 40px; }
 .login-panel h2 { font-family: 'Orbitron', sans-serif; margin-bottom: 10px; color: #fff; }
@@ -23,7 +21,6 @@ body { font-family: 'Inter', sans-serif; background: #03070a; color: #e9f7ff; mi
 .primary { background: #00aaff; color: #000; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; transition: 0.3s; }
 .primary:hover { background: #00ccff; box-shadow: 0 0 20px rgba(0,170,255,0.4); }
 
-/* JARVIS Animated Hero */
 .jarvis-hero { display: flex; flex-direction: column; align-items: center; margin-bottom: 25px; }
 .radar-container { position: relative; width: 240px; height: 240px; display: flex; align-items: center; justify-content: center; margin-top: 10px; }
 .ring-outer, .ring-mid, .ring-inner, .ring-core { position: absolute; border-radius: 50%; }
@@ -34,7 +31,6 @@ body { font-family: 'Inter', sans-serif; background: #03070a; color: #e9f7ff; mi
 .jarvis-text { position: absolute; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 18px; letter-spacing: 3px; color: #fff; text-shadow: 0 0 15px #00aaff, 0 0 30px #00aaff; z-index: 10; }
 .core-status { margin-top: 15px; font-family: 'Orbitron', sans-serif; font-size: 12px; color: #00aaff; letter-spacing: 2px; text-shadow: 0 0 10px rgba(0,170,255,0.5); }
 
-/* Chat */
 .console-panel { padding: 0; display: flex; flex-direction: column; height: 320px; margin-bottom: 20px; }
 .chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
 .chat-container::-webkit-scrollbar { width: 5px; }
@@ -50,7 +46,6 @@ body { font-family: 'Inter', sans-serif; background: #03070a; color: #e9f7ff; mi
 .btn-send:hover { background: #00ccff; transform: scale(1.05); }
 .btn-send svg { width: 18px; height: 18px; }
 
-/* Bottom Controls */
 .bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 .mic-panel { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 15px; }
 .mic-status { font-family: 'Orbitron', sans-serif; font-size: 10px; color: #555; letter-spacing: 1px; text-align: center; }
@@ -59,6 +54,7 @@ body { font-family: 'Inter', sans-serif; background: #03070a; color: #e9f7ff; mi
 .btn-mic svg { width: 28px; height: 28px; }
 .btn-mic.listening { background: #00aaff; color: #000; animation: micPulse 1.5s infinite; }
 .btn-text { background: none; border: none; color: #8fa8b6; font-size: 12px; cursor: pointer; text-decoration: underline; }
+
 .system-panel { display: flex; flex-direction: column; justify-content: center; }
 .sys-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12px; color: #8fa8b6; }
 .sys-row:last-child { border: none; }
