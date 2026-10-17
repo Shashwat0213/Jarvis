@@ -4,9 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- ========================================
-       SECURITY META TAGS
-       ======================================== -->
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="Permissions-Policy" content="microphone=(self)">
@@ -42,10 +39,6 @@
       <p id="greeting">Awaiting authentication.</p>
     </section>
 
-    <!-- ========================================
-         LOGIN PANEL
-         (initially hidden — auth check hone tak)
-         ======================================== -->
     <section class="panel login-panel hidden" id="loginPanel">
       <h2>Initialize Jarvis</h2>
       <p>Sign in with Google to create your secure Jarvis identity.</p>
@@ -53,10 +46,6 @@
       <div id="loginMessage" class="message"></div>
     </section>
 
-    <!-- ========================================
-         DASHBOARD
-         (initially hidden — login ke baad dikhega)
-         ======================================== -->
     <section class="dashboard hidden" id="dashboard">
       <div class="panel user-card">
         <div>
@@ -102,6 +91,7 @@
 
       <div class="panel command">
         <div class="eyebrow">COMMAND CONSOLE</div>
+
         <div class="command-line">
           <span>›</span>
           <input
@@ -114,6 +104,15 @@
           >
           <button id="sendBtn" class="primary small">SEND</button>
         </div>
+
+        <!-- 🆕 Voice Toggle Row -->
+        <div style="margin-top:10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <button id="voiceToggle" class="secondary small">🔊 Voice: ON</button>
+          <span id="voiceHint" style="font-size:11px; color:#70a0b5; letter-spacing:.08em;">
+            JARVIS will speak replies
+          </span>
+        </div>
+
         <div id="response" class="response">Jarvis is ready.</div>
       </div>
     </section>
