@@ -2,7 +2,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/fireba
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
 
+// ========================================
 // FIREBASE CONFIG
+// ========================================
 const firebaseConfig = {
   apiKey: "AIzaSyCIiomQVg4N5Fnp9u15yXasBfuny8Of6FQ",
   authDomain: "jarvis-44a31.firebaseapp.com",
@@ -18,7 +20,9 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
+// ========================================
 // BACKEND URL (अपना Render URL यहाँ डालें)
+// ========================================
 const JARVIS_BACKEND = "https://jarvis-7es3.onrender.com"; 
 const REQUEST_TIMEOUT_MS = 90000;
 
@@ -93,7 +97,7 @@ function showTypingIndicator() {
 }
 
 // ========================================
-// AUTH
+// AUTHENTICATION
 // ========================================
 $("loginBtn").onclick = async () => {
   $("loginMessage").textContent = "Authenticating…";
@@ -126,6 +130,9 @@ onAuthStateChanged(auth, async user => {
 });
 
 // ========================================
+// MICROPHONE (Part 1 End)
+// ========================================
+// ========================================
 // MICROPHONE & WAKE WORD ("HEY JARVIS")
 // ========================================
 let recognition = null;
@@ -137,6 +144,7 @@ micBtn.onclick = () => {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) { addMessage("Voice recognition not supported. Use Chrome.", "jarvis", true); return; }
   
+  // अगर पहले से सुन रहा है, तो बंद कर दें
   if (isListening) { 
     isListening = false;
     if (recognition) recognition.stop(); 
@@ -147,6 +155,7 @@ micBtn.onclick = () => {
     $("micText").textContent = "Say 'Hey Jarvis'";
     return; 
   }
+  
   stopSpeaking();
   startWakeWordListening();
 };
@@ -155,25 +164,29 @@ function startWakeWordListening() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SpeechRecognition();
   recognition.lang = "en-IN"; 
-  recognition.continuous = true;
-  recognition.interimResults = true;
+  recognition.continuous = true; 
+  recognition.interimResults = true; 
 
   recognition.onstart = () => {
-    isListening = true; isWakeWordMode = true;
+    isListening = true; 
+    isWakeWordMode = true;
     micBtn.classList.add("listening");
     $("micIndicator").classList.add("on"); 
-    $("micIndicator").innerHTML = "<span></span> LISTENING";
+    $("micIndicator").innerHTML = "<span></span> WAITING FOR 'HEY JARVIS'";
     $("coreState").textContent = "STANDBY"; 
-    $("micText").textContent = "Waiting for 'Hey Jarvis'...";
+    $("micText").textContent = "Say 'Hey Jarvis' or 'Hello Jarvis' to wake me up.";
   };
 
   recognition.onresult = event => {
     const transcript = Array.from(event.results).map(result => result[0].transcript).join("").toLowerCase();
+    
+    // वेक वर्ड डिटेक्शन
     if (isWakeWordMode && (transcript.includes("hey jarvis") || transcript.includes("hello jarvis") || transcript.includes("hey jervis"))) {
       isWakeWordMode = false;
       $("coreState").textContent = "LISTENING";
-      $("micText").textContent = "Yes Sir? Listening...";
-      $("micIndicator").innerHTML = "<span></span> ACTIVE";
+      $("micText").textContent = "Yes Sir? I'm listening...";
+      $("micIndicator").innerHTML = "<span></span> LISTENING";
+      
       recognition.stop(); 
       setTimeout(startCommandListening, 500); 
     }
@@ -183,21 +196,125 @@ function startWakeWordListening() {
     if (event.error !== "no-speech") {
       isListening = false;
       micBtn.classList.remove("listening");
+      $("micIndicator").innerHTML = "<span></span> MIC OFF"; 
+      $("micIndicator").classList.remove("on");
+      $("micText").textContent = `Error: ${event.error}`;
     }
   };
 
   recognition.onend = () => {
     if (isListening && isWakeWordMode) {
       try { recognition.start(); } catch(e) {}
+    } else if (!isWakeWordMode && isListening) {
+      // कमांड मोड का इंतज़ार
+    } else {
+      micBtn.classList.remove("listening");
+      $("coreState").textContent = "ONLINE";
+      $("micIndicator").innerHTML = "<span></span> MIC READY"; 
+      $("micIndicator").classList.remove("on");
     }
   };
 
   try { recognition.start(); } catch (e) { addMessage(e.message, "jarvis", true); }
 }
 
+// असली कमांड सुनने का फंक्शन (वेक वर्ड के बाद)
 function startCommandListening() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SpeechRecognition();
   recognition.lang = "en-IN"; 
   recognition.continuous = false; 
-  recognition.inter
+  recognition.interimResults = false; 
+
+  recognition.onstart = () => {
+    isListening = true;
+    $("coreState").textContent = "LISTENING";
+  };
+
+  recognition.onresult = event => {
+    const transcript = event.results[0][0].transcript;
+    $("commandInput").value = transcript;
+    isListening = false;
+    micBtn.classList.remove("listening");
+    sendCommand(); 
+  };
+
+  recognition.onerror = event => {
+    isListening = false;
+    micBtn.classList.remove("listening");
+    $("coreState").textContent = "ONLINE";
+    if(event.error === "no-speech") $("micText").textContent = "I didn't hear anything. Click mic to try again.";
+    startWakeWordListening(); 
+  };
+
+  recognition.onend = () => {
+    if (isListening) { 
+      isListening = false;
+      micBtn.classList.remove("listening");
+      startWakeWordListening(); 
+    }
+  };
+
+  try { recognition.start(); } catch (e) { startWakeWordListening(); }
+}
+
+// ========================================
+// SEND COMMAND TO BACKEND
+// ========================================
+async function sendCommand() {
+  const input = $("commandInput");
+  const text = input.value.trim();
+  if (!text) return;
+
+  stopSpeaking();
+  addMessage(text, "user");
+  input.value = "";
+  
+  $("coreState").textContent = "PROCESSING";
+  const typingMsg = showTypingIndicator();
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(JARVIS_BACKEND + "/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timer);
+    const data = await response.json();
+    typingMsg.remove(); 
+
+    if (!response.ok) throw new Error(data?.error || `Server error: ${response.status}`);
+    const reply = data?.reply;
+    if (!reply) throw new Error("No JARVIS reply received.");
+
+    addMessage(reply, "jarvis"); 
+    $("coreState").textContent = "ONLINE";
+    speak(reply); 
+
+  } catch (error) {
+    clearTimeout(timer);
+    typingMsg.remove(); 
+    
+    let friendlyMsg = error?.message || "Unknown error";
+    if (error.name === "AbortError") friendlyMsg = "Request timed out. Please try again.";
+    else if (error.message?.includes("Failed to fetch")) friendlyMsg = "Cannot reach JARVIS backend. Check Render.";
+    
+    addMessage(friendlyMsg, "jarvis", true); 
+    $("coreState").textContent = "ERROR";
+  }
+}
+
+// ========================================
+// BUTTONS & INPUTS
+// ========================================
+$("sendBtn").onclick = sendCommand;
+$("commandInput").addEventListener("keydown", e => { 
+  if (e.key === "Enter") { e.preventDefault(); sendCommand(); } 
+});
+
+window.addEventListener("beforeunload", () => stopSpeaking());
