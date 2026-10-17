@@ -24,7 +24,7 @@ const $ = (selector) => document.querySelector(selector);
 setPersistence(auth, browserLocalPersistence).catch(console.error);
 
 // ========================================
-// UI ELEMENTS & VOICE
+// UI ELEMENTS & VOICE (Hindi Support)
 // ========================================
 const chatLog = $("#chatLog");
 const commandInput = $("#commandInput");
@@ -35,7 +35,11 @@ const voiceHint = $("#voiceHint");
 let voiceEnabled = true;
 let selectedVoice = null;
 if ("speechSynthesis" in window) {
-  const loadVoices = () => { const v = window.speechSynthesis.getVoices(); selectedVoice = v.find(x => x.lang === "en-GB") || v.find(x => x.lang === "en-IN") || v[0]; };
+  const loadVoices = () => { 
+    const v = window.speechSynthesis.getVoices(); 
+    // हिंदी सपोर्ट के लिए hi-IN को प्राथमिकता
+    selectedVoice = v.find(x => x.lang === "hi-IN") || v.find(x => x.lang === "en-IN") || v.find(x => x.lang === "en-GB") || v[0]; 
+  };
   loadVoices();
   window.speechSynthesis.onvoiceschanged = loadVoices;
 }
@@ -45,13 +49,16 @@ function speak(text) {
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.rate = 1.0; u.pitch = 0.9;
+  u.lang = "hi-IN"; // हिंदी आवाज़ के लिए
   if (selectedVoice) u.voice = selectedVoice;
   window.speechSynthesis.speak(u);
 }
 
 // ========================================
-// CHAT SYSTEM
+// CHAT SYSTEM & CONTEXT MEMORY
 // ========================================
+let chatHistory = []; // 🆕 पिछले मैसेज याद रखने के लिए
+
 function addMessage(text, sender = "jarvis", isError = false) {
   if (chatLog.children.length === 1 && chatLog.children[0].textContent.includes("Systems online")) chatLog.innerHTML = "";
   const row = document.createElement("div");
@@ -69,16 +76,24 @@ function addMessage(text, sender = "jarvis", isError = false) {
 async function handleCommand(raw) {
   const command = raw.trim();
   if (!command) return;
+  
   addMessage(command, "user");
   commandInput.value = "";
+  
+  // 🆕 हिस्ट्री में यूज़र का मैसेज सेव करें
+  chatHistory.push({ sender: "user", text: command });
   
   document.body.classList.add("thinking");
   const typing = addMessage("...", "jarvis");
 
   try {
     const res = await fetch(JARVIS_BACKEND + "/api/chat", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: command })
+      method: "POST", 
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        message: command,
+        history: chatHistory.slice(0, -1) // 🆕 पिछले मैसेज भेजें
+      })
     });
     const data = await res.json();
     if (typing) typing.remove();
@@ -86,6 +101,11 @@ async function handleCommand(raw) {
     document.body.classList.remove("thinking");
     if (data.reply) { 
       addMessage(data.reply, "jarvis"); 
+      
+      // 🆕 हिस्ट्री में JARVIS का जवाब सेव करें
+      chatHistory.push({ sender: "jarvis", text: data.reply });
+      if (chatHistory.length > 10) chatHistory.shift(); // हिस्ट्री लिमिट 10
+
       speak(data.reply); 
     } else {
       throw new Error();
@@ -133,7 +153,7 @@ onAuthStateChanged(auth, async user => {
 });
 
 // ========================================
-// MIC & WAKE WORD
+// MIC & WAKE WORD (हिंदी सपोर्ट के साथ)
 // ========================================
 let recognition = null;
 let isListeningMode = false;
@@ -152,7 +172,7 @@ if (SpeechRecognition) {
 
 function startWakeWord() {
   recognition = new SpeechRecognition();
-  recognition.lang = "en-IN";
+  recognition.lang = "hi-IN"; // 🆕 हिंदी में सुनने के लिए (en-IN भी रख सकते हैं)
   recognition.continuous = true;
   recognition.interimResults = true;
 
@@ -183,7 +203,7 @@ function startWakeWord() {
 
 function listenForCommand() {
   recognition = new SpeechRecognition();
-  recognition.lang = "en-IN";
+  recognition.lang = "hi-IN"; // 🆕 हिंदी कमांड के लिए
   recognition.continuous = false;
 
   recognition.onresult = (event) => {
@@ -205,7 +225,7 @@ function stopMic() {
 }
 
 // ========================================
-// JARVIS HUD CORE ANIMATION (Your Code)
+// JARVIS HUD CORE ANIMATION (SVG + Canvas)
 // ========================================
 (() => {
   const core = document.querySelector("#core");
