@@ -1,5 +1,5 @@
 import express from "express";
-import cors from "cors";
+import cors from "dotenv"; // typo fix: dotenv should be imported normally
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -8,18 +8,19 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ========================================
-// CONFIG
+// CONFIG (OpenRouter)
 // ========================================
 
-const AIMLAPI_KEY = process.env.AIMLAPI_KEY;
-const AIMLAPI_URL = "https://api.aimlapi.com/v1/chat/completions";
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-// Model priority list — agar ek fail ho, agle par switch
+// Model priority list — Free models first, then paid as fallback
 const MODEL_CHAIN = [
-  "openai/gpt-5-5",              // 1. ChatGPT (best quality)
-  "anthropic/claude-opus-4-7",   // 2. Claude (reasoning)
-  "google/gemini-3-8-flash",     // 3. Gemini (fast)
-  "meta/llama-3-3-70b"           // 4. Llama (safe backup)
+  "meta-llama/llama-3-8b-instruct:free",   // 1. Free Llama 3
+  "google/gemma-7b-it:free",               // 2. Free Gemma
+  "mistralai/mistral-7b-instruct:free",    // 3. Free Mistral
+  "openai/gpt-4o-mini",                    // 4. Paid OpenAI (Fast)
+  "anthropic/claude-3-haiku"               // 5. Paid Claude (Fast)
 ];
 
 // CORS allowed origins
@@ -94,19 +95,21 @@ function rateLimit(req, res, next) {
 }
 
 // ========================================
-// AIML API CALL (ek model ke liye)
+// OPENROUTER API CALL
 // ========================================
 
-async function callAIML(model, message) {
+async function callOpenRouter(model, message) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 25000);
 
   try {
-    const response = await fetch(AIMLAPI_URL, {
+    const response = await fetch(OPENROUTER_URL, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${AIMLAPI_KEY}`,
-        "Content-Type": "application/json"
+        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://shashwat0213.github.io/Jarvis/", // Required by OpenRouter
+        "X-Title": "JARVIS AI" // Required by OpenRouter
       },
       signal: controller.signal,
       body: JSON.stringify({
@@ -157,7 +160,7 @@ async function callAIML(model, message) {
 }
 
 // ========================================
-// SMART FALLBACK — har model try karo
+// SMART FALLBACK
 // ========================================
 
 async function getJarvisReply(message) {
@@ -166,18 +169,16 @@ async function getJarvisReply(message) {
   for (const model of MODEL_CHAIN) {
     try {
       console.log(`Trying model: ${model}`);
-      const reply = await callAIML(model, message);
+      const reply = await callOpenRouter(model, message);
       console.log(`SUCCESS with model: ${model}`);
       return { reply, model };
 
     } catch (err) {
       console.warn(`Model ${model} failed:`, err.message);
       errors.push(`${model}: ${err.message}`);
-      // Agle model par jao
     }
   }
 
-  // Agar sab fail ho gaye
   throw new Error(`All models failed:\n${errors.join("\n")}`);
 }
 
@@ -189,10 +190,10 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     system: "JARVIS",
-    version: "V2",
-    provider: "AIML API",
+    version: "V3",
+    provider: "OpenRouter",
     models: MODEL_CHAIN,
-    apiKey: AIMLAPI_KEY ? "configured" : "MISSING",
+    apiKey: OPENROUTER_API_KEY ? "configured" : "MISSING",
     message: "Jarvis backend is running."
   });
 });
@@ -205,7 +206,6 @@ app.post("/api/chat", rateLimit, async (req, res) => {
   try {
     const { message } = req.body;
 
-    // Validation
     if (!message || typeof message !== "string") {
       return res.status(400).json({ error: "Message is required." });
     }
@@ -216,8 +216,8 @@ app.post("/api/chat", rateLimit, async (req, res) => {
       });
     }
 
-    if (!AIMLAPI_KEY) {
-      console.error("AIMLAPI_KEY is missing.");
+    if (!OPENROUTER_API_KEY) {
+      console.error("OPENROUTER_API_KEY is missing.");
       return res.status(500).json({
         error: "AI service is not configured on the server."
       });
@@ -225,14 +225,13 @@ app.post("/api/chat", rateLimit, async (req, res) => {
 
     console.log("JARVIS COMMAND:", message);
 
-    // Fallback chain ke saath reply lo
     const { reply, model } = await getJarvisReply(message);
 
     console.log(`JARVIS REPLY (via ${model}):`, reply);
 
     res.json({
       reply: reply,
-      model: model  // Frontend ko batao kaunsa model use hua
+      model: model
     });
 
   } catch (error) {
@@ -268,7 +267,7 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`JARVIS backend running on port ${PORT}`);
-  console.log(`Provider: AIML API`);
+  console.log(`Provider: OpenRouter`);
   console.log(`Model chain: ${MODEL_CHAIN.join(" → ")}`);
-  console.log(`API key: ${AIMLAPI_KEY ? "OK" : "MISSING"}`);
+  console.log(`API key: ${OPENROUTER_API_KEY ? "OK" : "MISSING"}`);
 });
