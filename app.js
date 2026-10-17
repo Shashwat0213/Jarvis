@@ -20,7 +20,7 @@ const $ = id => document.getElementById(id);
 
 setPersistence(auth, browserLocalPersistence).catch(console.error);
 
-// VOICE
+// --- VOICE OUTPUT (TTS) ---
 let voiceEnabled = true;
 let selectedVoice = null;
 if ("speechSynthesis" in window) {
@@ -31,16 +31,22 @@ if ("speechSynthesis" in window) {
   loadVoices();
   window.speechSynthesis.onvoiceschanged = loadVoices;
 }
+
 function speak(text) {
   if (!voiceEnabled || !("speechSynthesis" in window)) return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.rate = 1.0; u.pitch = 0.9; // Deep classic voice
+  u.rate = 1.0; u.pitch = 0.9;
   if (selectedVoice) u.voice = selectedVoice;
   window.speechSynthesis.speak(u);
 }
 
-// AUTH
+$("voiceToggle").onclick = () => {
+  voiceEnabled = !voiceEnabled;
+  $("voiceToggle").textContent = voiceEnabled ? "🔊 AUDIO: ON" : "🔇 AUDIO: OFF";
+};
+
+// --- AUTHENTICATION ---
 $("loginBtn").onclick = () => signInWithPopup(auth, provider).catch(e => alert(e.message));
 $("logoutBtn").onclick = () => signOut(auth);
 
@@ -51,8 +57,9 @@ onAuthStateChanged(auth, async user => {
   if (user) {
     if ($("dashboard")) $("dashboard").classList.remove("hidden");
     if ($("statusText")) $("statusText").textContent = "ONLINE";
-    if ($("userName")) $("userName").textContent = user.displayName || "Operator";
-    if ($("authState")) $("authState").textContent = "AUTH: SECURE";
+    if ($("userName")) $("userName").textContent = user.displayName || "OPERATOR";
+    if ($("authState")) $("authState").textContent = "SECURE";
+    if ($("coreState")) $("coreState").textContent = "ACTIVE";
 
     try {
       await setDoc(doc(db, "users", user.uid), { uid: user.uid, name: user.displayName, email: user.email, lastLogin: serverTimestamp() }, { merge: true });
@@ -63,15 +70,16 @@ onAuthStateChanged(auth, async user => {
   } else {
     if ($("loginPanel")) $("loginPanel").classList.remove("hidden");
     if ($("statusText")) $("statusText").textContent = "STANDBY";
+    if ($("coreState")) $("coreState").textContent = "STANDBY";
   }
 });
 
-// CHAT & ORB ANIMATION
+// --- CHAT SYSTEM & CORE ANIMATION ---
 const chatBox = $("chatContainer");
-const orb = document.querySelector(".orb"); // Central Orb Element
+const coreText = $("coreState");
 
 function addMsg(text, sender, isError = false) {
-  if (chatBox.children.length === 1 && chatBox.children[0].textContent.includes("Systems initialized")) chatBox.innerHTML = "";
+  if (chatBox.children.length === 1 && chatBox.children[0].textContent.includes("All systems operational")) chatBox.innerHTML = "";
   const div = document.createElement("div");
   div.className = `msg ${isError ? 'error' : sender}`;
   div.textContent = text;
@@ -88,8 +96,9 @@ async function sendCommand() {
   addMsg(text, "user");
   input.value = "";
   
-  // Orb Processing State ON
-  if (orb) orb.classList.add("processing");
+  if (coreText) coreText.textContent = "PROCESSING";
+  if (coreText) coreText.style.color = "#ffaa00";
+  
   const typing = addMsg("...", "jarvis");
   
   try {
@@ -100,8 +109,7 @@ async function sendCommand() {
     const data = await res.json();
     if (typing) typing.remove();
     
-    // Orb Processing State OFF
-    if (orb) orb.classList.remove("processing");
+    if (coreText) { coreText.textContent = "ACTIVE"; coreText.style.color = "#fff"; }
 
     if (data.reply) { 
       addMsg(data.reply, "jarvis"); 
@@ -111,35 +119,39 @@ async function sendCommand() {
     }
   } catch (e) {
     if (typing) typing.remove();
-    if (orb) orb.classList.remove("processing");
-    addMsg("System Error: Cannot reach backend.", "jarvis", true);
+    if (coreText) { coreText.textContent = "ERROR"; coreText.style.color = "#ff3333"; }
+    addMsg("System Error: Cannot reach core.", "jarvis", true);
+    setTimeout(() => { if (coreText) { coreText.textContent = "ONLINE"; coreText.style.color = "#fff"; } }, 2000);
   }
 }
 
 if ($("sendBtn")) $("sendBtn").onclick = sendCommand;
 if ($("commandInput")) $("commandInput").addEventListener("keydown", e => { if (e.key === "Enter") sendCommand(); });
 
-// MIC & WAKE WORD
+
+// --- MICROPHONE & "HEY JARVIS" (BUG FIXED) ---
 let recognition = null;
-let isListeningForWakeWord = false;
+let isListeningMode = false; // क्या माइक एक्टिव है?
 const micBtn = $("micBtn");
+const micIndicator = $("micIndicator");
 
 if (micBtn) {
   micBtn.onclick = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return alert("Voice recognition requires Chrome.");
     
-    if (isListeningForWakeWord) {
-      isListeningForWakeWord = false;
-      if (recognition) recognition.stop();
-      resetMicUI();
+    // अगर माइक पहले से ऑन है, तो बंद कर दें
+    if (isListeningMode) {
+      stopMic();
       return;
     }
-    startWakeWord();
+    
+    // माइक चालू करें
+    startMic();
   };
 }
 
-function startWakeWord() {
+function startMic() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SpeechRecognition();
   recognition.lang = "en-IN"; 
@@ -147,25 +159,39 @@ function startWakeWord() {
   recognition.interimResults = true; 
 
   recognition.onstart = () => {
-    isListeningForWakeWord = true;
+    isListeningMode = true;
     if (micBtn) micBtn.classList.add("listening");
-    if ($("micIndicator")) { $("micIndicator").classList.add("on"); $("micIndicator").textContent = "LISTENING (Say 'Hey Jarvis')"; }
+    if (micIndicator) { micIndicator.classList.add("on"); micIndicator.textContent = "LISTENING (Say 'Hey Jarvis')"; }
+    if (coreText) { coreText.textContent = "LISTENING"; coreText.style.color = "#00e5ff"; }
   };
 
   recognition.onresult = (event) => {
     let transcript = "";
     for (let i = event.resultIndex; i < event.results.length; i++) transcript += event.results[i][0].transcript;
+    const lowerTranscript = transcript.toLowerCase();
     
-    if (transcript.toLowerCase().includes("hey jarvis") || transcript.toLowerCase().includes("hello jarvis")) {
-      isListeningForWakeWord = false;
-      recognition.stop();
-      if ($("micIndicator")) $("micIndicator").textContent = "COMMAND MODE...";
-      setTimeout(listenForCommand, 500);
+    // वेक-वर्ड डिटेक्शन
+    if (lowerTranscript.includes("hey jarvis") || lowerTranscript.includes("hello jarvis")) {
+      
+      // वेक-वर्ड मिलते ही माइक को पूरी तरह बंद करें ताकि बार-बार ट्रिगर न हो
+      stopMic(); 
+      
+      if (micIndicator) micIndicator.textContent = "COMMAND MODE...";
+      
+      // अब असली कमांड सुनें
+      setTimeout(() => { listenForCommand(); }, 600);
     }
   };
 
-  recognition.onerror = () => resetMicUI();
-  recognition.onend = () => { if (isListeningForWakeWord) recognition.start(); };
+  recognition.onerror = (e) => {
+    if (e.error !== "no-speech") stopMic();
+  };
+
+  // अगर ब्राउज़र अपने आप बंद कर दे, तो फिर से चालू करें (जब तक यूज़र ने खुद बंद न किया हो)
+  recognition.onend = () => { 
+    if (isListeningMode) recognition.start(); 
+  };
+  
   recognition.start();
 }
 
@@ -173,19 +199,35 @@ function listenForCommand() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SpeechRecognition();
   recognition.lang = "en-IN"; 
-  recognition.continuous = false; 
+  recognition.continuous = false; // सिर्फ एक बार सुनेगा
+  recognition.interimResults = false;
+
+  recognition.onstart = () => {
+    if (micIndicator) micIndicator.textContent = "LISTENING TO COMMAND...";
+  };
 
   recognition.onresult = (event) => {
-    if ($("commandInput")) $("commandInput").value = event.results[0][0].transcript;
-    sendCommand();
+    const command = event.results[0][0].transcript;
+    if ($("commandInput")) $("commandInput").value = command;
+    stopMic(); // कमांड मिलते ही माइक बंद
+    sendCommand(); // सर्वर को भेजें
   };
-  recognition.onend = () => resetMicUI();
-  recognition.onerror = () => resetMicUI();
+
+  recognition.onerror = () => { stopMic(); };
+  recognition.onend = () => { stopMic(); }; // कमांड के बाद हमेशा बंद हो जाए
+
   recognition.start();
 }
 
-function resetMicUI() {
-  isListeningForWakeWord = false;
+// माइक और UI को रीसेट करने का फंक्शन
+function stopMic() {
+  isListeningMode = false;
+  if (recognition) {
+    recognition.onend = null; // रीस्टार्ट लूप रोकने के लिए
+    recognition.stop();
+    recognition = null;
+  }
   if (micBtn) micBtn.classList.remove("listening");
-  if ($("micIndicator")) { $("micIndicator").classList.remove("on"); $("micIndicator").textContent = "VOICE MODULE: OFF"; }
+  if (micIndicator) { micIndicator.classList.remove("on"); micIndicator.textContent = "OFFLINE"; }
+  if (coreText) { coreText.textContent = "ACTIVE"; coreText.style.color = "#fff"; }
 }
