@@ -1,5 +1,5 @@
 import express from "express";
-import cors from "dotenv"; // typo fix: dotenv should be imported normally
+import cors from "cors";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -19,11 +19,10 @@ const MODEL_CHAIN = [
   "meta-llama/llama-3-8b-instruct:free",   // 1. Free Llama 3
   "google/gemma-7b-it:free",               // 2. Free Gemma
   "mistralai/mistral-7b-instruct:free",    // 3. Free Mistral
-  "openai/gpt-4o-mini",                    // 4. Paid OpenAI (Fast)
-  "anthropic/claude-3-haiku"               // 5. Paid Claude (Fast)
+  "openai/gpt-4o-mini",                    // 4. Paid OpenAI
+  "anthropic/claude-3-haiku"               // 5. Paid Claude
 ];
 
-// CORS allowed origins
 const ALLOWED_ORIGINS = [
   "https://shashwat0213.github.io",
   "http://localhost:3000",
@@ -32,7 +31,7 @@ const ALLOWED_ORIGINS = [
 ];
 
 // ========================================
-// SECURITY HEADERS
+// SECURITY HEADERS & CORS
 // ========================================
 
 app.use((req, res, next) => {
@@ -43,10 +42,6 @@ app.use((req, res, next) => {
   res.removeHeader("X-Powered-By");
   next();
 });
-
-// ========================================
-// CORS
-// ========================================
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -108,8 +103,8 @@ async function callOpenRouter(model, message) {
       headers: {
         "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://shashwat0213.github.io/Jarvis/", // Required by OpenRouter
-        "X-Title": "JARVIS AI" // Required by OpenRouter
+        "HTTP-Referer": "https://shashwat0213.github.io/Jarvis/", 
+        "X-Title": "JARVIS AI" 
       },
       signal: controller.signal,
       body: JSON.stringify({
@@ -117,11 +112,7 @@ async function callOpenRouter(model, message) {
         messages: [
           {
             role: "system",
-            content:
-              "You are JARVIS, a helpful personal AI assistant. " +
-              "Be clear, intelligent, concise and friendly. " +
-              "Answer the user's questions naturally. " +
-              "Do not claim to have performed an action unless you actually did it."
+            content: "You are JARVIS, a helpful personal AI assistant. Be clear, intelligent, concise and friendly."
           },
           {
             role: "user",
@@ -134,22 +125,14 @@ async function callOpenRouter(model, message) {
     });
 
     clearTimeout(timeout);
-
     const data = await response.json();
 
     if (!response.ok) {
-      const errMsg =
-        data?.error?.message ||
-        data?.error ||
-        `Status ${response.status}`;
-      throw new Error(`${model} failed: ${errMsg}`);
+      throw new Error(`${model} failed: ${data?.error?.message || response.status}`);
     }
 
     const reply = data?.choices?.[0]?.message?.content?.trim();
-
-    if (!reply) {
-      throw new Error(`${model} returned empty response`);
-    }
+    if (!reply) throw new Error(`${model} returned empty response`);
 
     return reply;
 
@@ -165,25 +148,22 @@ async function callOpenRouter(model, message) {
 
 async function getJarvisReply(message) {
   const errors = [];
-
   for (const model of MODEL_CHAIN) {
     try {
       console.log(`Trying model: ${model}`);
       const reply = await callOpenRouter(model, message);
       console.log(`SUCCESS with model: ${model}`);
       return { reply, model };
-
     } catch (err) {
       console.warn(`Model ${model} failed:`, err.message);
       errors.push(`${model}: ${err.message}`);
     }
   }
-
   throw new Error(`All models failed:\n${errors.join("\n")}`);
 }
 
 // ========================================
-// HEALTH CHECK
+// ENDPOINTS
 // ========================================
 
 app.get("/", (req, res) => {
@@ -198,10 +178,6 @@ app.get("/", (req, res) => {
   });
 });
 
-// ========================================
-// JARVIS CHAT
-// ========================================
-
 app.post("/api/chat", rateLimit, async (req, res) => {
   try {
     const { message } = req.body;
@@ -210,55 +186,20 @@ app.post("/api/chat", rateLimit, async (req, res) => {
       return res.status(400).json({ error: "Message is required." });
     }
 
-    if (message.length > 4000) {
-      return res.status(400).json({
-        error: "Message too long (max 4000 characters)."
-      });
-    }
-
     if (!OPENROUTER_API_KEY) {
-      console.error("OPENROUTER_API_KEY is missing.");
-      return res.status(500).json({
-        error: "AI service is not configured on the server."
-      });
+      return res.status(500).json({ error: "AI service is not configured on the server." });
     }
 
     console.log("JARVIS COMMAND:", message);
-
     const { reply, model } = await getJarvisReply(message);
-
     console.log(`JARVIS REPLY (via ${model}):`, reply);
 
-    res.json({
-      reply: reply,
-      model: model
-    });
+    res.json({ reply, model });
 
   } catch (error) {
     console.error("JARVIS SERVER ERROR:", error);
-    res.status(500).json({
-      error: "Jarvis is currently unable to respond. Please try again."
-    });
+    res.status(500).json({ error: "Jarvis is currently unable to respond. Please try again." });
   }
-});
-
-// ========================================
-// 404 FALLBACK
-// ========================================
-
-app.use((req, res) => {
-  res.status(404).json({
-    error: `Route not found: ${req.method} ${req.path}`
-  });
-});
-
-// ========================================
-// ERROR HANDLER
-// ========================================
-
-app.use((err, req, res, next) => {
-  console.error("UNHANDLED ERROR:", err);
-  res.status(500).json({ error: "Internal server error." });
 });
 
 // ========================================
