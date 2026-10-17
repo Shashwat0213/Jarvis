@@ -1,88 +1,83 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Orbitron:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Orbitron:wght@500;700;900&display=swap');
 
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{margin:0;height:100vh;font-family:'Inter',sans-serif;background:#03070d;color:#e9f7ff;overflow:hidden}
-.hidden{display:none !important}
+body{font-family:'Inter',sans-serif;background:#03070a;color:#e9f7ff;min-height:100vh;overflow-y:auto;overflow-x:hidden}
 
-/* Background */
-.ambient{position:fixed;inset:0;background:radial-gradient(circle at 50% 0%,rgba(0,170,255,.1),transparent 50%);pointer-events:none;z-index:-1}
+.bg-glow{position:fixed;inset:0;background:radial-gradient(circle at 50% 0%, rgba(0,150,255,0.15), transparent 60%);z-index:-1}
 
-/* Layout */
-.app{display:flex;flex-direction:column;height:100%;max-width:800px;margin:0 auto;padding:15px;position:relative}
-.topbar{display:flex;justify-content:space-between;align-items:center;padding-bottom:15px;border-bottom:1px solid rgba(92,190,225,.1);flex-shrink:0}
-.brand{display:flex;align-items:center;gap:12px}
-.brand-orb{width:30px;height:30px;border:2px solid #58d7ff;border-radius:50%;box-shadow:0 0 15px #58d7ff;position:relative}
-.brand-orb:after{content:"";position:absolute;inset:6px;border-radius:50%;background:#59dfff;animation:corePulse 2s infinite}
-.brand-name{font-family:'Orbitron',sans-serif;letter-spacing:.2em;font-weight:800;font-size:16px}
-.brand-sub{font-size:9px;color:#70a0b5;letter-spacing:.1em}
-.status{font-size:11px;letter-spacing:.1em;display:flex;gap:6px;align-items:center;font-family:'Orbitron',sans-serif;color:#8fa8b6}
-.status span:first-child{width:6px;height:6px;border-radius:50%;background:#596773}
+.app{max-width:800px;margin:0 auto;padding:20px}
 
-/* Hero Section */
-.hero{text-align:center;padding:15px 0;flex-shrink:0;display:flex;justify-content:center}
-.core-wrap{position:relative;width:120px;height:120px;display:flex;align-items:center;justify-content:center}
-.ring{position:absolute;border-radius:50%;border:1px solid rgba(87,215,255,.2)}
-.outer-ring{width:120px;height:120px;border-style:dashed;animation:rotate 10s linear infinite}
-.middle-ring{width:90px;height:90px;border-style:dotted;border-color:rgba(87,215,255,.4);animation:rotateRev 8s linear infinite}
-.core-ring{width:70px;height:70px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid rgba(83,216,255,.5);box-shadow:0 0 20px rgba(0,170,255,.2);background:rgba(5,16,28,.8);animation:corePulse 3s infinite}
-.core-state{font-family:'Orbitron',sans-serif;font-weight:800;font-size:11px;color:#64dfff;text-shadow:0 0 10px #64dfff}
+/* Header */
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-dot{width:12px;height:12px;background:#00aaff;border-radius:50%;box-shadow:0 0 15px #00aaff;animation:pulse 2s infinite}
+.brand-name{font-family:'Orbitron',sans-serif;font-weight:900;letter-spacing:2px;font-size:18px}
+.status{font-size:12px;display:flex;align-items:center;gap:6px;font-family:'Orbitron',sans-serif}
+#statusDot{width:8px;height:8px;background:#555;border-radius:50%}
 
 /* Panels */
-.panel{background:rgba(7,15,25,.6);border:1px solid rgba(92,190,225,.15);border-radius:14px;padding:15px;backdrop-filter:blur(10px)}
-.login-panel{max-width:350px;margin:20px auto;text-align:center}
+.panel{background:rgba(10,15,25,0.7);border:1px solid rgba(0,150,255,0.2);border-radius:16px;padding:20px;backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(0,0,0,0.5)}
+.hidden{display:none !important}
+
+/* Login */
+.login-panel{text-align:center;margin-top:50px}
 .login-panel h2{font-family:'Orbitron',sans-serif;margin-bottom:10px}
-.login-panel p{font-size:13px;color:#8fa8b6;margin-bottom:15px}
-.primary{background:#57d7ff;color:#021019;border:none;padding:12px;border-radius:8px;font-weight:600;cursor:pointer;width:100%}
-.secondary{background:transparent;border:1px solid rgba(92,190,225,.3);color:#a9d8e8;padding:8px 12px;border-radius:8px;cursor:pointer}
-.small{font-size:12px}
-.mt-2{margin-top:10px}
+.login-panel p{color:#8fa8b6;font-size:14px;margin-bottom:20px}
+.primary{background:#00aaff;color:#000;border:none;padding:12px 24px;border-radius:8px;font-weight:600;cursor:pointer;width:100%;transition:0.3s}
+.primary:hover{background:#00ccff;box-shadow:0 0 20px rgba(0,170,255,0.4)}
 
-/* Dashboard Layout */
-.dashboard{display:flex;flex-direction:column;flex:1;overflow:hidden;gap:15px}
-.command{display:flex;flex-direction:column;flex:1;overflow:hidden;padding:0}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:15px;flex-shrink:0}
-.eyebrow{font-size:10px;letter-spacing:.1em;color:#70a0b5;margin-bottom:8px}
-.user-name{font-family:'Orbitron',sans-serif;font-size:16px;color:#fff}
-.user-email{font-size:11px;color:#7895a3;margin-top:2px}
-.sys-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(92,190,225,.08);font-size:12px;color:#91a9b6}
-.sys-row:last-child{border:none}
-.sys-row b{font-family:'Orbitron',sans-serif;color:#64dfff;font-size:10px}
+/* JARVIS Hero (Animated Rings like Photo) */
+.jarvis-hero{display:flex;flex-direction:column;align-items:center;margin-bottom:30px}
+.radar-container{position:relative;width:220px;height:220px;display:flex;align-items:center;justify-content:center}
+.ring-outer, .ring-mid, .ring-inner, .ring-core{position:absolute;border-radius:50%}
+.ring-outer{width:220px;height:220px;border:2px dashed rgba(0,170,255,0.3);animation:spin 15s linear infinite}
+.ring-mid{width:170px;height:170px;border:1px solid rgba(255,100,0,0.4);border-top:2px solid #ff6600;box-shadow:0 0 15px rgba(255,100,0,0.2);animation:spinRev 10s linear infinite}
+.ring-inner{width:120px;height:120px;border:2px dotted #00aaff;box-shadow:inset 0 0 20px rgba(0,170,255,0.3);animation:spin 8s linear infinite}
+.ring-core{width:70px;height:70px;background:rgba(0,170,255,0.1);border:2px solid #00aaff;box-shadow:0 0 30px #00aaff;animation:pulse 2s infinite}
+.jarvis-text{position:absolute;font-family:'Orbitron',sans-serif;font-weight:900;font-size:16px;letter-spacing:3px;color:#fff;text-shadow:0 0 10px #00aaff, 0 0 20px #00aaff;z-index:10}
+.core-status{margin-top:15px;font-family:'Orbitron',sans-serif;font-size:12px;color:#00aaff;letter-spacing:2px}
 
-/* Chat Area (Focus Area) */
-.chat-container{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;scroll-behavior:smooth}
+/* Chat Console */
+.console-panel{padding:0;display:flex;flex-direction:column;height:350px;margin-bottom:20px}
+.chat-container{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:15px;scroll-behavior:smooth}
 .chat-container::-webkit-scrollbar{width:5px}
-.chat-container::-webkit-scrollbar-thumb{background:rgba(92,190,225,0.2);border-radius:5px}
-.chat-message{padding:12px 16px;border-radius:12px;font-size:14px;line-height:1.5;max-width:85%;animation:msgFadeIn 0.3s ease-out;word-wrap:break-word}
-.user-msg{align-self:flex-end;background:rgba(87,215,255,0.15);border:1px solid rgba(87,215,255,0.3);color:#fff;border-bottom-right-radius:2px}
-.jarvis-msg{align-self:flex-start;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#d4eaf5;border-bottom-left-radius:2px}
-.jarvis-error{background:rgba(255,80,80,0.1);border-color:rgba(255,80,80,0.3);color:#ff9e9e}
+.chat-container::-webkit-scrollbar-thumb{background:rgba(0,170,255,0.3);border-radius:5px}
 
-/* Input Row */
-.command-line{display:flex;align-items:center;gap:8px;padding:12px;background:rgba(0,0,0,0.3);border-top:1px solid rgba(92,190,225,0.1);flex-shrink:0}
-.command-line input{flex:1;background:transparent;border:none;color:#fff;font-size:14px;outline:none;padding:8px 0}
-.command-line input::placeholder{color:#5a7585}
-.mic-btn,.send-btn{background:transparent;border:none;color:#57d7ff;cursor:pointer;padding:8px;border-radius:50%;transition:0.2s;display:flex;align-items:center;justify-content:center}
-.mic-btn:hover,.send-btn:hover{background:rgba(87,215,255,0.1)}
-.mic-btn.listening{color:#ff4b4b;animation:pulseMic 1s infinite}
-.send-btn{background:#57d7ff;color:#000}
-.send-btn:hover{background:#8ae5ff}
+.msg{max-width:85%;padding:12px 16px;border-radius:12px;font-size:14px;line-height:1.5;animation:fadeIn 0.3s ease-out}
+.jarvis{align-self:flex-start;background:rgba(0,170,255,0.1);border:1px solid rgba(0,170,255,0.2);border-bottom-left-radius:2px}
+.user{align-self:flex-end;background:#1a2b3c;border:1px solid rgba(255,255,255,0.1);border-bottom-right-radius:2px}
+.error{background:rgba(255,50,50,0.1);border-color:rgba(255,50,50,0.3);color:#ff8888}
 
-.mic-status-row{display:flex;justify-content:space-between;padding:0 15px 10px;font-size:11px;color:#70a0b5}
-.mic-indicator.on{color:#64dfff}
-.text-btn{background:none;border:none;color:#8fa8b6;cursor:pointer;font-size:11px}
-footer{text-align:center;padding:10px 0;color:#66818e;font-size:10px;letter-spacing:.1em;flex-shrink:0}
+.input-area{display:flex;align-items:center;padding:15px;background:rgba(0,0,0,0.5);border-top:1px solid rgba(0,170,255,0.2);border-radius:0 0 16px 16px}
+.prompt{color:#00aaff;font-size:20px;font-weight:bold;margin-right:10px}
+.input-area input{flex:1;background:transparent;border:none;color:#fff;font-size:15px;outline:none}
+.btn-send{background:#00aaff;border:none;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#000;transition:0.2s}
+.btn-send:hover{background:#00ccff;transform:scale(1.05)}
+
+/* Bottom Controls */
+.bottom-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+
+.mic-panel{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:15px}
+.mic-status{font-family:'Orbitron',sans-serif;font-size:11px;color:#555;letter-spacing:1px}
+.mic-status.on{color:#00aaff;text-shadow:0 0 10px #00aaff}
+.btn-mic{width:70px;height:70px;border-radius:50%;background:rgba(0,170,255,0.05);border:2px solid #00aaff;color:#00aaff;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:0.3s}
+.btn-mic svg{width:30px;height:30px}
+.btn-mic.listening{background:#00aaff;color:#000;animation:micPulse 1.5s infinite}
+.btn-text{background:none;border:none;color:#8fa8b6;font-size:12px;cursor:pointer;text-decoration:underline}
+
+.system-panel{display:flex;flex-direction:column;justify-content:center}
+.sys-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px;color:#8fa8b6}
+.sys-row:last-child{border:none}
+.sys-row b{font-family:'Orbitron',sans-serif;color:#00aaff;font-size:11px}
+.text-green{color:#00ff88 !important}
+.btn-logout{margin-top:10px;background:transparent;border:1px solid rgba(255,50,50,0.5);color:#ff5555;padding:8px;border-radius:8px;cursor:pointer;font-size:12px;transition:0.2s}
+.btn-logout:hover{background:rgba(255,50,50,0.1)}
 
 /* Animations */
-@keyframes rotate{100%{transform:rotate(360deg)}}
-@keyframes rotateRev{100%{transform:rotate(-360deg)}}
-@keyframes corePulse{50%{transform:scale(1.05);box-shadow:0 0 30px rgba(0,170,255,.4)}}
-@keyframes msgFadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
-@keyframes pulseMic{0%{box-shadow:0 0 0 0 rgba(255,75,75,0.4)}70%{box-shadow:0 0 0 10px rgba(255,75,75,0)}100%{box-shadow:0 0 0 0 rgba(255,75,75,0)}}
+@keyframes spin{100%{transform:rotate(360deg)}}
+@keyframes spinRev{100%{transform:rotate(-360deg)}}
+@keyframes pulse{50%{transform:scale(1.05);opacity:0.8}}
+@keyframes micPulse{0%{box-shadow:0 0 0 0 rgba(0,170,255,0.4)}70%{box-shadow:0 0 0 20px rgba(0,170,255,0)}100%{box-shadow:0 0 0 0 rgba(0,170,255,0)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
-@media(max-width:600px){
-  .grid{grid-template-columns:1fr}
-  .core-wrap{width:100px;height:100px}
-  .outer-ring{width:100px;height:100px}
-  .middle-ring{width:75px;height:75px}
-  .core-ring{width:60px;height:60px}
-}
+@media(max-width:600px){.bottom-grid{grid-template-columns:1fr}}
