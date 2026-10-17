@@ -1,134 +1,141 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Share+Tech+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;900&family=Share+Tech+Mono&display=swap');
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { 
   font-family: 'Share Tech Mono', monospace; 
-  background: #010306; 
+  background: #01040a; 
   color: #00e5ff; 
   min-height: 100vh; 
   overflow-y: auto; 
   overflow-x: hidden; 
+  perspective: 1000px;
 }
 .hidden { display: none !important; }
 
-/* Cinematic Background Effects */
-.bg-glow { position: fixed; inset: 0; background: radial-gradient(circle at 50% 30%, rgba(0, 229, 255, 0.1), transparent 60%); z-index: -2; }
-.scanlines { position: fixed; inset: 0; background: linear-gradient(transparent 50%, rgba(0,229,255,0.03) 50%); background-size: 100% 4px; z-index: -1; pointer-events: none; }
+/* Background Grid & Glows */
+.holo-grid {
+  position: fixed; inset: -50%;
+  background-image: linear-gradient(rgba(0, 229, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 229, 255, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+  transform: rotateX(60deg) translateY(-200px);
+  z-index: -3;
+  animation: gridMove 10s linear infinite;
+}
+.ambient-glow { position: fixed; inset: 0; background: radial-gradient(circle at 50% 40%, rgba(0, 229, 255, 0.15), transparent 60%); z-index: -2; }
+.scanlines { position: fixed; inset: 0; background: linear-gradient(transparent 50%, rgba(0,229,255,0.02) 50%); background-size: 100% 4px; z-index: -1; pointer-events: none; }
 
-.app { max-width: 1000px; margin: 0 auto; padding: 20px; position: relative; z-index: 10; }
+.app { max-width: 900px; margin: 0 auto; padding: 20px; position: relative; z-index: 10; }
 
-/* HUD Typography & Panels */
+/* HUD Panels */
 .hud-panel {
-  background: rgba(0, 10, 20, 0.4);
-  border: 1px solid rgba(0, 229, 255, 0.2);
-  box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.05), 0 0 15px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(8px);
+  background: rgba(0, 8, 15, 0.7);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.1);
+  backdrop-filter: blur(12px);
   padding: 15px;
   position: relative;
-  transition: all 0.3s ease;
+  border-radius: 2px; /* Sharp corners */
 }
-/* Angled Corners Hack */
-.hud-panel::before {
-  content: ''; position: absolute; top: -1px; left: -1px; width: 10px; height: 10px;
-  border-top: 2px solid #00e5ff; border-left: 2px solid #00e5ff;
+/* HUD Corner Accents */
+.hud-panel::before { content: ''; position: absolute; top: -1px; left: -1px; width: 15px; height: 15px; border-top: 2px solid #00e5ff; border-left: 2px solid #00e5ff; }
+.hud-panel::after { content: ''; position: absolute; bottom: -1px; right: -1px; width: 15px; height: 15px; border-bottom: 2px solid #00e5ff; border-right: 2px solid #00e5ff; }
+
+.hud-label { font-size: 10px; color: #557a8c; letter-spacing: 2px; margin-bottom: 5px; }
+.hud-value { font-size: 16px; color: #fff; font-family: 'Orbitron', sans-serif; font-weight: 600; }
+.cyan-text { color: #00e5ff !important; }
+
+/* Top HUD */
+.top-hud { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
+.brand-title { font-family: 'Orbitron', sans-serif; font-size: 24px; font-weight: 900; letter-spacing: 6px; color: #fff; text-shadow: 0 0 20px #00e5ff, 0 0 40px #00e5ff; }
+.small-panel { padding: 10px 15px; }
+.align-right { text-align: right; }
+
+/* 1. 3D HOLOGRAM CORE */
+.core-wrapper { position: relative; width: 100%; height: 400px; display: flex; justify-content: center; align-items: center; margin-bottom: 20px; transform-style: preserve-3d; }
+
+/* Dotted 3D Sphere (Inspired by Photo 2) */
+.sphere-dots {
+  position: absolute; width: 250px; height: 250px;
+  border-radius: 50%;
+  background-image: radial-gradient(#00e5ff 2px, transparent 2px);
+  background-size: 12px 12px;
+  opacity: 0.3;
+  animation: rotate3D 20s linear infinite;
+  box-shadow: 0 0 80px rgba(0, 229, 255, 0.2) inset;
 }
-.hud-panel::after {
-  content: ''; position: absolute; bottom: -1px; right: -1px; width: 10px; height: 10px;
-  border-bottom: 2px solid #00e5ff; border-right: 2px solid #00e5ff;
-}
-.hud-panel:hover { border-color: rgba(0, 229, 255, 0.5); box-shadow: inset 0 0 30px rgba(0, 229, 255, 0.1), 0 0 20px rgba(0, 229, 255, 0.2); }
 
-/* Top Bar */
-.top-hud { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-.brand-title { font-family: 'Orbitron', sans-serif; font-size: 24px; font-weight: 900; letter-spacing: 4px; text-shadow: 0 0 15px #00e5ff; text-align: center; }
-.sys-text { font-size: 12px; color: #fff; letter-spacing: 1px; }
-.sys-sub { font-size: 10px; color: #557a8c; margin-top: 4px; }
-.top-left { border-left: 2px solid #00e5ff; border-top: none; border-right: none; border-bottom: none; }
-.top-right { border-right: 2px solid #00e5ff; border-top: none; border-left: none; border-bottom: none; text-align: right; }
+/* Concentric Rotating Rings (Inspired by Photo 1) */
+.ring { position: absolute; border-radius: 50%; pointer-events: none; border: 1px solid transparent; }
+.ring-1 { width: 300px; height: 300px; border-top: 2px solid #00e5ff; border-bottom: 2px solid #00e5ff; animation: spin 8s linear infinite; }
+.ring-2 { width: 340px; height: 340px; border-left: 2px dashed #00e5ff; border-right: 2px dashed #00e5ff; opacity: 0.6; animation: spinRev 12s linear infinite; }
+.ring-3 { width: 220px; height: 220px; border: 2px dotted rgba(0, 229, 255, 0.4); animation: spin 15s linear infinite; }
+.ring-4 { width: 380px; height: 380px; border: 1px solid rgba(0, 229, 255, 0.2); border-top: 1px solid #fff; animation: spin 25s linear infinite; }
 
-/* Login Panel */
-.login-panel { max-width: 400px; margin: 100px auto; text-align: center; padding: 40px; }
-.login-panel h2 { font-family: 'Orbitron', sans-serif; margin-bottom: 10px; }
-.login-panel p { color: #557a8c; margin-bottom: 30px; }
-.btn-hud { background: transparent; border: 1px solid #00e5ff; color: #00e5ff; padding: 12px 24px; font-family: 'Share Tech Mono', monospace; font-size: 16px; cursor: pointer; transition: 0.3s; text-transform: uppercase; width: 100%; }
-.btn-hud:hover { background: #00e5ff; color: #000; box-shadow: 0 0 20px #00e5ff; }
+/* Core Text */
+.core-text-container { position: absolute; text-align: center; z-index: 10; background: rgba(0,10,20,0.6); padding: 10px 20px; border-radius: 50%; backdrop-filter: blur(5px); border: 1px solid rgba(0,229,255,0.3); box-shadow: 0 0 30px rgba(0,229,255,0.4); }
+.core-text { font-family: 'Orbitron', sans-serif; font-size: 20px; font-weight: 900; color: #fff; letter-spacing: 3px; text-shadow: 0 0 10px #00e5ff; }
+.core-subtext { font-size: 9px; color: #00e5ff; letter-spacing: 2px; margin-top: 3px; }
 
-/* 1. CENTRAL CORE (THE ORB & RINGS) */
-.core-container { position: relative; width: 100%; height: 350px; display: flex; justify-content: center; align-items: center; margin-bottom: 20px; }
+/* Crosshairs */
+.crosshair { position: absolute; background: rgba(0, 229, 255, 0.2); }
+.crosshair.h { width: 450px; height: 1px; }
+.crosshair.v { width: 1px; height: 450px; }
 
-.orb { position: relative; width: 120px; height: 120px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #ccffff, #00e5ff, #003366); box-shadow: 0 0 40px #00e5ff, inset 0 0 20px #fff; display: flex; justify-content: center; align-items: center; z-index: 10; transition: all 0.3s ease; }
-.orb::after { content: ''; position: absolute; inset: -5px; border-radius: 50%; border: 1px solid rgba(0, 229, 255, 0.5); animation: pulseOrb 1.5s infinite; }
-.orb-text { font-family: 'Orbitron', sans-serif; font-size: 12px; color: #fff; text-shadow: 0 0 10px #000; z-index: 11; letter-spacing: 2px; }
+/* 2. TERMINAL CHAT */
+.terminal-panel { padding: 0; margin-bottom: 20px; border-color: rgba(0,229,255,0.4); }
+.terminal-header { display: flex; align-items: center; padding: 10px 15px; background: rgba(0, 229, 255, 0.05); border-bottom: 1px solid rgba(0, 229, 255, 0.2); }
+.dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+.red { background: #ff3333; } .yellow { background: #ffaa00; } .green { background: #00ff88; }
+.terminal-title { font-size: 11px; color: #00e5ff; margin-left: auto; letter-spacing: 1px; }
 
-/* Idle Animation */
-@keyframes pulseOrb { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.15); opacity: 0; } 100% { transform: scale(1); opacity: 0; } }
-/* Active State (Processing) */
-.orb.processing { animation: activeOrb 0.5s infinite alternate; background: radial-gradient(circle at 30% 30%, #ffffcc, #ffaa00, #663300); box-shadow: 0 0 60px #ffaa00; }
-@keyframes activeOrb { from { transform: scale(1); } to { transform: scale(1.1); } }
-
-/* Holographic Rings */
-.ring { position: absolute; border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; }
-.ring-inner { width: 180px; height: 180px; border: 1px dashed rgba(0, 229, 255, 0.4); animation: spin 15s linear infinite; }
-.ring-mid { width: 260px; height: 260px; border: 2px solid transparent; border-top: 2px solid #00e5ff; border-bottom: 2px solid #00e5ff; box-shadow: inset 0 0 20px rgba(0,229,255,0.1); animation: spinRev 10s linear infinite; }
-.ring-outer { width: 340px; height: 340px; border: 1px solid rgba(0, 229, 255, 0.2); border-left: 3px solid #00e5ff; animation: spin 25s linear infinite; }
-
-/* 2. CHAT CONSOLE */
-.console-panel { height: 350px; display: flex; flex-direction: column; padding: 0; margin-bottom: 20px; }
-.panel-header { padding: 10px 15px; border-bottom: 1px solid rgba(0, 229, 255, 0.2); font-size: 12px; display: flex; justify-content: space-between; letter-spacing: 2px; background: rgba(0, 229, 255, 0.05); }
-.blinking-dot { width: 8px; height: 8px; background: #00e5ff; border-radius: 50%; animation: blink 1s infinite; }
-
-.chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
-.chat-container::-webkit-scrollbar { width: 3px; }
+.chat-container { height: 250px; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.chat-container::-webkit-scrollbar { width: 4px; }
 .chat-container::-webkit-scrollbar-thumb { background: #00e5ff; }
-
-.msg { max-width: 85%; padding: 10px 15px; font-size: 14px; line-height: 1.5; animation: fadeIn 0.3s ease-out; }
-.jarvis { align-self: flex-start; background: rgba(0, 229, 255, 0.1); border-left: 2px solid #00e5ff; color: #a5e4ff; }
+.msg { max-width: 85%; padding: 10px 14px; font-size: 14px; line-height: 1.6; border-radius: 4px; }
+.jarvis { align-self: flex-start; background: rgba(0, 229, 255, 0.05); border-left: 2px solid #00e5ff; color: #a5e4ff; }
 .user { align-self: flex-end; background: rgba(255, 255, 255, 0.05); border-right: 2px solid #fff; color: #fff; }
 .error { align-self: flex-start; background: rgba(255, 50, 50, 0.1); border-left: 2px solid #ff3333; color: #ff8888; }
 
-.input-area { display: flex; align-items: center; padding: 15px; background: rgba(0,0,0,0.5); border-top: 1px solid rgba(0, 229, 255, 0.2); }
-.prompt { color: #00e5ff; font-size: 18px; margin-right: 10px; }
-.input-area input { flex: 1; background: transparent; border: none; color: #00e5ff; font-family: 'Share Tech Mono', monospace; font-size: 15px; outline: none; }
-.btn-send { background: transparent; border: none; color: #00e5ff; cursor: pointer; padding: 5px; transition: 0.2s; }
-.btn-send:hover { color: #fff; text-shadow: 0 0 10px #00e5ff; }
-.btn-send svg { width: 20px; height: 20px; }
+.input-area { display: flex; align-items: center; padding: 15px; background: rgba(0,0,0,0.6); border-top: 1px solid rgba(0, 229, 255, 0.2); }
+.prompt { color: #00e5ff; font-size: 14px; margin-right: 12px; font-weight: bold; }
+.input-area input { flex: 1; background: transparent; border: none; color: #fff; font-family: 'Share Tech Mono', monospace; font-size: 15px; outline: none; }
+.btn-send { background: transparent; border: 1px solid #00e5ff; color: #00e5ff; padding: 8px 16px; font-family: 'Share Tech Mono', monospace; cursor: pointer; transition: 0.3s; border-radius: 2px; }
+.btn-send:hover { background: #00e5ff; color: #000; box-shadow: 0 0 15px #00e5ff; }
 
-/* 3. FLOATING DATA PANELS */
+/* 3. CONTROLS GRID */
 .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.mic-panel { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; }
-.mic-status { font-size: 11px; letter-spacing: 1px; color: #557a8c; text-transform: uppercase; }
-.mic-status.on { color: #00e5ff; text-shadow: 0 0 10px #00e5ff; animation: blink 2s infinite; }
-.btn-mic { width: 60px; height: 60px; border-radius: 50%; background: rgba(0, 229, 255, 0.1); border: 1px solid #00e5ff; color: #00e5ff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; }
-.btn-mic:hover { background: rgba(0, 229, 255, 0.2); box-shadow: 0 0 20px rgba(0, 229, 255, 0.4); }
+.control-box { display: flex; flex-direction: column; }
+.mic-status { font-size: 14px; color: #557a8c; margin: 15px 0; font-family: 'Orbitron', sans-serif; text-align: center; }
+.mic-status.on { color: #00e5ff; text-shadow: 0 0 10px #00e5ff; }
+.btn-mic { width: 70px; height: 70px; border-radius: 50%; background: rgba(0, 229, 255, 0.05); border: 1px solid #00e5ff; color: #00e5ff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; margin: 0 auto; box-shadow: 0 0 20px rgba(0,229,255,0.1); }
+.btn-mic svg { width: 30px; height: 30px; }
+.btn-mic:hover { background: rgba(0, 229, 255, 0.2); }
 .btn-mic.listening { background: #00e5ff; color: #000; animation: pulseMic 1.5s infinite; }
-.btn-mic svg { width: 24px; height: 24px; }
-.voice-controls { display: flex; gap: 15px; }
-.btn-text { background: none; border: none; color: #557a8c; font-family: 'Share Tech Mono', monospace; cursor: pointer; font-size: 12px; }
+.btn-row { display: flex; justify-content: space-between; margin-top: 20px; }
+.btn-text { background: none; border: none; color: #557a8c; font-family: 'Share Tech Mono', monospace; cursor: pointer; font-size: 12px; letter-spacing: 1px; }
 .btn-text:hover { color: #00e5ff; }
-.text-danger:hover { color: #ff3333; }
+.btn-text.danger:hover { color: #ff3333; }
 
-.profile-panel { display: flex; flex-direction: column; justify-content: center; gap: 10px; }
-.data-row { display: flex; justify-content: space-between; font-size: 12px; border-bottom: 1px dashed rgba(0, 229, 255, 0.2); padding-bottom: 5px; }
+.data-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed rgba(0, 229, 255, 0.1); font-size: 14px; }
 .data-row:last-child { border: none; }
 .data-row span { color: #557a8c; }
-.data-row b { color: #00e5ff; letter-spacing: 1px; }
-.text-cyan { color: #00e5ff !important; }
+.data-row b { color: #fff; }
 
 /* Animations */
-@keyframes spin { 100% { transform: translate(-50%, -50%) rotate(360deg); } }
-@keyframes spinRev { 100% { transform: translate(-50%, -50%) rotate(-360deg); } }
-@keyframes blink { 50% { opacity: 0.5; } }
-@keyframes pulseMic { 0% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(0, 229, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0); } }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes spin { 100% { transform: rotate(360deg); } }
+@keyframes spinRev { 100% { transform: rotate(-360deg); } }
+@keyframes gridMove { 100% { background-position: 0 40px; } }
+@keyframes rotate3D { 0% { transform: rotateY(0deg) rotateX(20deg); } 100% { transform: rotateY(360deg) rotateX(20deg); } }
+@keyframes pulseMic { 0% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0.4); } 70% { box-shadow: 0 0 0 20px rgba(0, 229, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0); } }
 
 @media(max-width: 768px) {
   .controls-grid { grid-template-columns: 1fr; }
-  .core-container { height: 280px; }
-  .ring-inner { width: 140px; height: 140px; }
-  .ring-mid { width: 200px; height: 200px; }
-  .ring-outer { width: 260px; height: 260px; }
-  .orb { width: 90px; height: 90px; }
-  .brand-title { font-size: 18px; }
-  .top-hud { flex-direction: column; align-items: center; gap: 10px; }
-  .top-left, .top-right { border: none; text-align: center; width: 100%; }
+  .brand-title { font-size: 18px; letter-spacing: 3px; }
+  .sphere-dots { width: 180px; height: 180px; }
+  .ring-1 { width: 220px; height: 220px; }
+  .ring-2 { width: 250px; height: 250px; }
+  .ring-3 { width: 160px; height: 160px; }
+  .ring-4 { width: 280px; height: 280px; }
+  .crosshair.h { width: 300px; }
+  .crosshair.v { height: 300px; }
 }
