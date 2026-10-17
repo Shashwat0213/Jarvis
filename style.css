@@ -4,7 +4,6 @@
 body { font-family: 'Inter', sans-serif; background: #03070a; color: #e9f7ff; min-height: 100vh; overflow-y: auto; overflow-x: hidden; }
 .hidden { display: none !important; }
 
-/* Background Glow */
 .bg-glow { position: fixed; inset: 0; background: radial-gradient(circle at 50% 0%, rgba(0,150,255,0.15), transparent 60%); z-index: -1; }
 .app { max-width: 800px; margin: 0 auto; padding: 20px; }
 
@@ -16,42 +15,34 @@ body { font-family: 'Inter', sans-serif; background: #03070a; color: #e9f7ff; mi
 .status { font-size: 12px; display: flex; align-items: center; gap: 6px; font-family: 'Orbitron', sans-serif; }
 #statusDot { width: 8px; height: 8px; background: #555; border-radius: 50%; transition: 0.3s; }
 
-/* Panels (Glassmorphism) */
+/* Panels */
 .panel { background: rgba(10,15,25,0.7); border: 1px solid rgba(0,150,255,0.2); border-radius: 16px; padding: 20px; backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-
-/* Login Panel */
 .login-panel { text-align: center; margin-top: 40px; }
 .login-panel h2 { font-family: 'Orbitron', sans-serif; margin-bottom: 10px; color: #fff; }
 .login-panel p { color: #8fa8b6; font-size: 14px; margin-bottom: 20px; }
 .primary { background: #00aaff; color: #000; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; transition: 0.3s; }
 .primary:hover { background: #00ccff; box-shadow: 0 0 20px rgba(0,170,255,0.4); }
 
-/* JARVIS Animated Hero (Like Photo) */
+/* JARVIS Animated Hero */
 .jarvis-hero { display: flex; flex-direction: column; align-items: center; margin-bottom: 25px; }
 .radar-container { position: relative; width: 240px; height: 240px; display: flex; align-items: center; justify-content: center; margin-top: 10px; }
 .ring-outer, .ring-mid, .ring-inner, .ring-core { position: absolute; border-radius: 50%; }
-
-/* Rotating Rings */
 .ring-outer { width: 240px; height: 240px; border: 2px dashed rgba(0,170,255,0.3); animation: spin 20s linear infinite; }
 .ring-mid { width: 190px; height: 190px; border: 1px solid rgba(255,100,0,0.4); border-top: 3px solid #ff6600; box-shadow: 0 0 20px rgba(255,100,0,0.3); animation: spinRev 12s linear infinite; }
 .ring-inner { width: 130px; height: 130px; border: 2px dotted #00aaff; box-shadow: inset 0 0 25px rgba(0,170,255,0.3); animation: spin 8s linear infinite; }
 .ring-core { width: 80px; height: 80px; background: rgba(0,170,255,0.1); border: 2px solid #00aaff; box-shadow: 0 0 40px #00aaff; animation: pulse 2s infinite; }
-
-/* Center Text */
 .jarvis-text { position: absolute; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 18px; letter-spacing: 3px; color: #fff; text-shadow: 0 0 15px #00aaff, 0 0 30px #00aaff; z-index: 10; }
 .core-status { margin-top: 15px; font-family: 'Orbitron', sans-serif; font-size: 12px; color: #00aaff; letter-spacing: 2px; text-shadow: 0 0 10px rgba(0,170,255,0.5); }
 
-/* Chat Console */
+/* Chat */
 .console-panel { padding: 0; display: flex; flex-direction: column; height: 320px; margin-bottom: 20px; }
 .chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
 .chat-container::-webkit-scrollbar { width: 5px; }
 .chat-container::-webkit-scrollbar-thumb { background: rgba(0,170,255,0.3); border-radius: 5px; }
-
 .msg { max-width: 85%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; animation: fadeIn 0.3s ease-out; word-wrap: break-word; }
 .jarvis { align-self: flex-start; background: rgba(0,170,255,0.1); border: 1px solid rgba(0,170,255,0.2); border-bottom-left-radius: 2px; color: #d4eaf5; }
 .user { align-self: flex-end; background: #1a2b3c; border: 1px solid rgba(255,255,255,0.1); border-bottom-right-radius: 2px; color: #fff; }
 .error { align-self: flex-start; background: rgba(255,50,50,0.1); border: 1px solid rgba(255,50,50,0.3); color: #ff8888; }
-
 .input-area { display: flex; align-items: center; padding: 15px; background: rgba(0,0,0,0.5); border-top: 1px solid rgba(0,170,255,0.2); border-radius: 0 0 16px 16px; }
 .prompt { color: #00aaff; font-size: 22px; font-weight: bold; margin-right: 10px; margin-bottom: 5px; }
 .input-area input { flex: 1; background: transparent; border: none; color: #fff; font-size: 15px; outline: none; }
@@ -68,23 +59,19 @@ body { font-family: 'Inter', sans-serif; background: #03070a; color: #e9f7ff; mi
 .btn-mic svg { width: 28px; height: 28px; }
 .btn-mic.listening { background: #00aaff; color: #000; animation: micPulse 1.5s infinite; }
 .btn-text { background: none; border: none; color: #8fa8b6; font-size: 12px; cursor: pointer; text-decoration: underline; }
-
 .system-panel { display: flex; flex-direction: column; justify-content: center; }
 .sys-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12px; color: #8fa8b6; }
 .sys-row:last-child { border: none; }
 .sys-row b { font-family: 'Orbitron', sans-serif; color: #00aaff; font-size: 11px; }
-.text-green { color: #00ff88 !important; }
 .btn-logout { margin-top: 10px; background: transparent; border: 1px solid rgba(255,50,50,0.5); color: #ff5555; padding: 8px; border-radius: 8px; cursor: pointer; font-size: 12px; transition: 0.2s; }
 .btn-logout:hover { background: rgba(255,50,50,0.1); }
 
-/* Animations */
 @keyframes spin { 100% { transform: rotate(360deg); } }
 @keyframes spinRev { 100% { transform: rotate(-360deg); } }
 @keyframes pulse { 50% { transform: scale(1.05); opacity: 0.8; } }
 @keyframes micPulse { 0% { box-shadow: 0 0 0 0 rgba(0,170,255,0.4); } 70% { box-shadow: 0 0 0 20px rgba(0,170,255,0); } 100% { box-shadow: 0 0 0 0 rgba(0,170,255,0); } }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-/* Mobile Responsive */
 @media(max-width: 600px) {
   .bottom-grid { grid-template-columns: 1fr; }
   .radar-container { width: 200px; height: 200px; }
