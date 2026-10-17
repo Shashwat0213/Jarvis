@@ -11,13 +11,18 @@ const PORT = process.env.PORT || 3000;
 // CONFIG
 // ========================================
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+const AIMLAPI_KEY = process.env.AIMLAPI_KEY;
+const AIMLAPI_URL = "https://api.aimlapi.com/v1/chat/completions";
 
-const GEMINI_URL =
-  `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+// Model priority list — agar ek fail ho, agle par switch
+const MODEL_CHAIN = [
+  "openai/gpt-5-5",              // 1. ChatGPT (best quality)
+  "anthropic/claude-opus-4-7",   // 2. Claude (reasoning)
+  "google/gemini-3-8-flash",     // 3. Gemini (fast)
+  "meta/llama-3-3-70b"           // 4. Llama (safe backup)
+];
 
-// CORS — allowed origins
+// CORS allowed origins
 const ALLOWED_ORIGINS = [
   "https://shashwat0213.github.io",
   "http://localhost:3000",
@@ -26,7 +31,7 @@ const ALLOWED_ORIGINS = [
 ];
 
 // ========================================
-// SECURITY HEADERS MIDDLEWARE
+// SECURITY HEADERS
 // ========================================
 
 app.use((req, res, next) => {
@@ -39,14 +44,16 @@ app.use((req, res, next) => {
 });
 
 // ========================================
-// CORS MIDDLEWARE
+// CORS
 // ========================================
 
 app.use(cors({
   origin: (origin, callback) => {
-    // curl, Postman jaise tools ke liye origin nahi hota
     if (!origin) return callback(null, true);
     if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    if (origin.startsWith("https://shashwat0213.github.io")) {
+      return callback(null, true);
+    }
     console.warn("CORS BLOCKED:", origin);
     return callback(new Error("Not allowed by CORS"));
   },
@@ -55,19 +62,15 @@ app.use(cors({
   credentials: false
 }));
 
-// ========================================
-// BODY PARSER
-// ========================================
-
 app.use(express.json({ limit: "100kb" }));
 
 // ========================================
-// RATE LIMITING (simple in-memory)
+// RATE LIMITING
 // ========================================
 
 const rateLimitMap = new Map();
-const RATE_LIMIT_WINDOW = 60 * 1000;  // 1 minute
-const RATE_LIMIT_MAX = 20;            // 20 requests per minute per IP
+const RATE_LIMIT_WINDOW = 60 * 1000;
+const RATE_LIMIT_MAX = 20;
 
 function rateLimit(req, res, next) {
   const ip = req.ip || req.headers["x-forwarded-for"] || "unknown";
@@ -84,11 +87,98 @@ function rateLimit(req, res, next) {
 
   if (entry.count > RATE_LIMIT_MAX) {
     return res.status(429).json({
-      error: "Too many requests. Please wait a minute and try again."
+      error: "Too many requests. Please wait a minute."
     });
   }
-
   next();
+}
+
+// ========================================
+// AIML API CALL (ek model ke liye)
+// ========================================
+
+async function callAIML(model, message) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 25000);
+
+  try {
+    const response = await fetch(AIMLAPI_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${AIMLAPI_KEY}`,
+        "Content-Type": "application/json"
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: model,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are JARVIS, a helpful personal AI assistant. " +
+              "Be clear, intelligent, concise and friendly. " +
+              "Answer the user's questions naturally. " +
+              "Do not claim to have performed an action unless you actually did it."
+          },
+          {
+            role: "user",
+            content: message
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1024
+      })
+    });
+
+    clearTimeout(timeout);
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      const errMsg =
+        data?.error?.message ||
+        data?.error ||
+        `Status ${response.status}`;
+      throw new Error(`${model} failed: ${errMsg}`);
+    }
+
+    const reply = data?.choices?.[0]?.message?.content?.trim();
+
+    if (!reply) {
+      throw new Error(`${model} returned empty response`);
+    }
+
+    return reply;
+
+  } catch (err) {
+    clearTimeout(timeout);
+    throw err;
+  }
+}
+
+// ========================================
+// SMART FALLBACK — har model try karo
+// ========================================
+
+async function getJarvisReply(message) {
+  const errors = [];
+
+  for (const model of MODEL_CHAIN) {
+    try {
+      console.log(`Trying model: ${model}`);
+      const reply = await callAIML(model, message);
+      console.log(`SUCCESS with model: ${model}`);
+      return { reply, model };
+
+    } catch (err) {
+      console.warn(`Model ${model} failed:`, err.message);
+      errors.push(`${model}: ${err.message}`);
+      // Agle model par jao
+    }
+  }
+
+  // Agar sab fail ho gaye
+  throw new Error(`All models failed:\n${errors.join("\n")}`);
 }
 
 // ========================================
@@ -99,9 +189,10 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     system: "JARVIS",
-    version: "V1",
-    model: GEMINI_MODEL,
-    geminiKey: GEMINI_API_KEY ? "configured" : "MISSING",
+    version: "V2",
+    provider: "AIML API",
+    models: MODEL_CHAIN,
+    apiKey: AIMLAPI_KEY ? "configured" : "MISSING",
     message: "Jarvis backend is running."
   });
 });
@@ -114,14 +205,9 @@ app.post("/api/chat", rateLimit, async (req, res) => {
   try {
     const { message } = req.body;
 
-    // ----------------------------------------
-    // VALIDATE INPUT
-    // ----------------------------------------
-
+    // Validation
     if (!message || typeof message !== "string") {
-      return res.status(400).json({
-        error: "Message is required."
-      });
+      return res.status(400).json({ error: "Message is required." });
     }
 
     if (message.length > 4000) {
@@ -130,113 +216,29 @@ app.post("/api/chat", rateLimit, async (req, res) => {
       });
     }
 
-    // ----------------------------------------
-    // CHECK API KEY
-    // ----------------------------------------
-
-    if (!GEMINI_API_KEY) {
-      console.error("GEMINI_API_KEY is missing.");
+    if (!AIMLAPI_KEY) {
+      console.error("AIMLAPI_KEY is missing.");
       return res.status(500).json({
-        error: "Gemini API key is not configured on the server."
+        error: "AI service is not configured on the server."
       });
     }
 
     console.log("JARVIS COMMAND:", message);
 
-    // ----------------------------------------
-    // GEMINI REQUEST (with timeout)
-    // ----------------------------------------
+    // Fallback chain ke saath reply lo
+    const { reply, model } = await getJarvisReply(message);
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 25000);
+    console.log(`JARVIS REPLY (via ${model}):`, reply);
 
-    let geminiResponse;
-
-    try {
-      geminiResponse = await fetch(GEMINI_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": GEMINI_API_KEY
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          systemInstruction: {
-            parts: [
-              {
-                text:
-                  "You are JARVIS, a helpful personal AI assistant. " +
-                  "Be clear, intelligent, concise and friendly. " +
-                  "Answer the user's questions naturally. " +
-                  "Do not claim to have performed an action unless you actually did it."
-              }
-            ]
-          },
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: message }]
-            }
-          ],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 1024
-          }
-        })
-      });
-    } catch (fetchErr) {
-      clearTimeout(timeout);
-      if (fetchErr.name === "AbortError") {
-        return res.status(504).json({
-          error: "Gemini API timed out. Please try again."
-        });
-      }
-      throw fetchErr;
-    }
-
-    clearTimeout(timeout);
-
-    // ----------------------------------------
-    // PARSE RESPONSE
-    // ----------------------------------------
-
-    const data = await geminiResponse.json();
-    console.log("GEMINI STATUS:", geminiResponse.status);
-
-    if (!geminiResponse.ok) {
-      console.error("GEMINI API ERROR:", JSON.stringify(data, null, 2));
-      return res.status(502).json({
-        error:
-          data?.error?.message ||
-          `Gemini API failed with status ${geminiResponse.status}.`
-      });
-    }
-
-    // ----------------------------------------
-    // EXTRACT REPLY
-    // ----------------------------------------
-
-    const reply =
-      data?.candidates?.[0]?.content?.parts
-        ?.map(part => part.text || "")
-        .join("")
-        .trim();
-
-    if (!reply) {
-      console.error("EMPTY GEMINI RESPONSE:", JSON.stringify(data, null, 2));
-      return res.status(502).json({
-        error: "Gemini returned an empty response."
-      });
-    }
-
-    console.log("JARVIS REPLY:", reply);
-
-    res.json({ reply });
+    res.json({
+      reply: reply,
+      model: model  // Frontend ko batao kaunsa model use hua
+    });
 
   } catch (error) {
     console.error("JARVIS SERVER ERROR:", error);
     res.status(500).json({
-      error: "Jarvis backend error: " + (error.message || "Unknown error")
+      error: "Jarvis is currently unable to respond. Please try again."
     });
   }
 });
@@ -257,9 +259,7 @@ app.use((req, res) => {
 
 app.use((err, req, res, next) => {
   console.error("UNHANDLED ERROR:", err);
-  res.status(500).json({
-    error: "Internal server error."
-  });
+  res.status(500).json({ error: "Internal server error." });
 });
 
 // ========================================
@@ -268,6 +268,7 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`JARVIS backend running on port ${PORT}`);
-  console.log(`Gemini model: ${GEMINI_MODEL}`);
-  console.log(`Gemini key: ${GEMINI_API_KEY ? "OK" : "MISSING"}`);
+  console.log(`Provider: AIML API`);
+  console.log(`Model chain: ${MODEL_CHAIN.join(" → ")}`);
+  console.log(`API key: ${AIMLAPI_KEY ? "OK" : "MISSING"}`);
 });
