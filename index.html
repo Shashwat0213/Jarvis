@@ -2,110 +2,88 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>J.A.R.V.I.S — Holographic OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#050b14">
+  <title>J.A.R.V.I.S — AI Interface</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- 3D Background Effects -->
-  <div class="holo-grid"></div>
-  <div class="ambient-glow"></div>
-  <div class="scanlines"></div>
-
-  <main class="app">
-    <!-- TOP HUD -->
-    <header class="top-hud">
-      <div class="hud-panel small-panel">
-        <div class="hud-label">SYS STATUS</div>
-        <div class="hud-value" id="statusText">STANDBY</div>
+  <div class="app-shell">
+    <!-- Header -->
+    <header class="topbar">
+      <div class="brand-mark">J<span>.</span></div>
+      <div class="brand-copy">
+        <strong>JARVIS <span>AI OS</span></strong>
+        <small>PERSONAL ASSISTANT · V1</small>
       </div>
-      <div class="brand-title">J.A.R.V.I.S</div>
-      <div class="hud-panel small-panel align-right">
-        <div class="hud-label">AUTH</div>
-        <div class="hud-value" id="authState">WAITING</div>
-      </div>
+      <div class="status-pill"><i></i><span id="systemStatus">OFFLINE</span></div>
     </header>
 
-    <!-- LOGIN OVERLAY -->
-    <section class="login-overlay hidden" id="loginPanel">
-      <div class="hud-panel login-box">
-        <h2>SYSTEM LOCK</h2>
-        <p>Biometric authorization required.</p>
-        <button id="loginBtn" class="btn-hud">Authenticate Operator</button>
-      </div>
-    </section>
-
-    <!-- MAIN DASHBOARD -->
-    <section class="dashboard hidden" id="dashboard">
-      
-      <!-- 1. THE 3D HOLOGRAM CORE (Inspired by your photos) -->
-      <div class="core-wrapper">
-        <!-- Rotating 3D Sphere (CSS Dots) -->
-        <div class="sphere-dots"></div>
-        
-        <!-- Holographic Rings -->
-        <div class="ring ring-1"></div>
-        <div class="ring ring-2"></div>
-        <div class="ring ring-3"></div>
-        <div class="ring ring-4"></div>
-        
-        <!-- Center Core Text -->
-        <div class="core-text-container">
-          <div class="core-text" id="coreState">ONLINE</div>
-          <div class="core-subtext">A.I. CORE</div>
+    <main>
+      <!-- Animated SVG Reactor Core -->
+      <section class="stage">
+        <div class="reactor-wrap" id="core" aria-label="Jarvis visual core">
+          <svg id="hud" viewBox="-250 -250 500 500" aria-hidden="true">
+            <defs>
+              <radialGradient id="g"><stop offset="0" stop-color="#fff"/><stop offset=".25" stop-color="#a4f7ff"/><stop offset=".6" stop-color="#3fdcf2"/><stop offset="1" stop-color="#0077ff" stop-opacity="0"/></radialGradient>
+              <radialGradient id="lens"><stop offset="0" stop-color="#fff"/><stop offset=".55" stop-color="#c4fbff"/><stop offset="1" stop-color="#27c4e0"/></radialGradient>
+            </defs>
+          </svg>
+          <canvas id="wave"></canvas>
         </div>
-        
-        <!-- Crosshairs -->
-        <div class="crosshair h"></div>
-        <div class="crosshair v"></div>
-      </div>
+        <div class="stage-title">JARVIS</div>
+        <div class="stage-status"><i></i><span id="stageStatus">Standby</span></div>
+      </section>
 
-      <!-- 2. CHAT TERMINAL -->
-      <div class="hud-panel terminal-panel">
-        <div class="terminal-header">
-          <span class="dot red"></span>
-          <span class="dot yellow"></span>
-          <span class="dot green"></span>
-          <span class="terminal-title">NEURAL LINK ESTABLISHED</span>
-        </div>
-        <div class="chat-container" id="chatContainer">
-          <div class="msg jarvis">All systems operational. Awaiting your command, Sir.</div>
-        </div>
-        <div class="input-area">
-          <span class="prompt">root@jarvis:~$</span>
-          <input id="commandInput" placeholder="Enter command..." autocomplete="off">
-          <button id="sendBtn" class="btn-send">EXECUTE</button>
-        </div>
-      </div>
+      <section class="hero">
+        <div class="eyebrow"><span class="pulse-dot"></span> SYSTEM INTERFACE</div>
+        <h1>Good day,<br><em id="userName">Commander.</em></h1>
+        <p>Your personal assistant is standing by.</p>
+      </section>
 
-      <!-- 3. FLOATING DATA PANELS -->
-      <div class="controls-grid">
-        <!-- Mic Control -->
-        <div class="hud-panel control-box">
-          <div class="hud-label">VOICE RECOGNITION</div>
-          <div class="mic-status" id="micIndicator">OFFLINE</div>
-          <button id="micBtn" class="btn-mic">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
-          </button>
-          <div class="btn-row">
-            <button id="voiceToggle" class="btn-text">🔊 AUDIO: ON</button>
-            <button id="logoutBtn" class="btn-text danger">DISCONNECT</button>
-          </div>
+      <!-- Voice Control -->
+      <section class="core-card">
+        <div class="core-head">
+          <span>JARVIS CORE</span><span class="tiny-label" id="authState">AUTH WAITING</span>
         </div>
-
-        <!-- System Stats -->
-        <div class="hud-panel control-box">
-          <div class="hud-label">OPERATOR DATA</div>
-          <div class="data-row"><span>ID</span><b id="userName">—</b></div>
-          <div class="data-row"><span>UPLINK</span><b class="cyan-text" id="profileState">WAITING</b></div>
-          <div class="data-row"><span>NETWORK</span><b class="cyan-text">SECURE</b></div>
-          <div class="data-row"><span>PROCESSOR</span><b class="cyan-text">GEMINI</b></div>
+        <button class="mic-button" id="micButton" type="button">
+          <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"></rect><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M9 21h6"></path></svg>
+          <span id="micLabel">TAP TO SPEAK</span>
+        </button>
+        <p class="voice-hint" id="voiceHint">Say "Hey Jarvis" or click to speak.</p>
+        <div style="display:flex; justify-content:space-between; margin-top:10px;">
+           <button id="loginBtn" class="action-card" style="min-height:auto; padding:8px; width:48%;">Login Google</button>
+           <button id="logoutBtn" class="action-card" style="min-height:auto; padding:8px; width:48%;">Log Out</button>
         </div>
-      </div>
+      </section>
 
-    </section>
-  </main>
+      <!-- Chat Console -->
+      <section class="chat-card">
+        <div class="section-title"><h2>Neural Interface</h2><span>TEXT MODE</span></div>
+        <div class="chat-log" id="chatLog" aria-live="polite">
+          <div class="message jarvis-message"><span>J</span><p>Systems online. What can I help you with?</p></div>
+        </div>
+        <form class="command-form" id="commandForm">
+          <input id="commandInput" type="text" placeholder="Type a command..." autocomplete="off">
+          <button type="submit">↑</button>
+        </form>
+        <p class="console-note" id="profileState">Cloud Sync: Waiting</p>
+      </section>
 
+      <!-- Status -->
+      <section class="section-block status-section">
+        <div class="section-title"><h2>Connections</h2><span>STATUS</span></div>
+        <div class="connection-row">
+          <div class="connection-icon">◈</div><div class="connection-copy"><b>AI Engine</b><small>Gemini API (Render)</small></div><span class="tag tag-live">ACTIVE</span>
+        </div>
+        <div class="connection-row">
+          <div class="connection-icon">☁</div><div class="connection-copy"><b>Firebase</b><small>Auth & Database</small></div><span class="tag tag-live" id="authStatus">PENDING</span>
+        </div>
+      </section>
+    </main>
+
+    <footer>POWERED BY <strong>SHASHWAT</strong><span>JARVIS AI OS · MOBILE UI</span></footer>
+  </div>
   <script type="module" src="app.js"></script>
 </body>
 </html>
