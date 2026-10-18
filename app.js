@@ -16,28 +16,21 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 const JARVIS_BACKEND = "https://jarvis-7es3.onrender.com"; 
-const $ = (selector) => document.querySelector(selector);
+const $ = id => document.getElementById(id);
 
 setPersistence(auth, browserLocalPersistence).catch(console.error);
 
-// --- UI ELEMENTS ---
-const chatLog = $("#chatLog");
-const commandInput = $("#commandInput");
-const micButton = $("#micButton");
-const micLabel = $("#micLabel");
-const voiceHint = $("#voiceHint");
-
+// Voice
 let voiceEnabled = true;
 let selectedVoice = null;
 if ("speechSynthesis" in window) {
-  const loadVoices = () => { 
-    const v = window.speechSynthesis.getVoices(); 
-    selectedVoice = v.find(x => x.lang === "hi-IN") || v.find(x => x.lang === "en-IN") || v[0]; 
+  const loadVoices = () => {
+    const v = window.speechSynthesis.getVoices();
+    selectedVoice = v.find(x => x.lang === "hi-IN") || v.find(x => x.lang === "en-IN") || v[0];
   };
   loadVoices();
   window.speechSynthesis.onvoiceschanged = loadVoices;
 }
-
 function speak(text) {
   if (!voiceEnabled || !("speechSynthesis" in window)) return;
   window.speechSynthesis.cancel();
@@ -47,140 +40,137 @@ function speak(text) {
   window.speechSynthesis.speak(u);
 }
 
-// --- CHAT & MEMORY ---
-let chatHistory = []; 
+// Auth
+$("loginBtn").onclick = () => signInWithPopup(auth, provider).catch(e => alert(e.message));
+$("logoutBtn").onclick = () => signOut(auth);
 
-function addMessage(text, sender = "jarvis", isError = false) {
-  if (chatLog.children.length === 1 && chatLog.children[0].textContent.includes("Systems online")) chatLog.innerHTML = "";
-  const row = document.createElement("div");
-  row.className = `message ${sender === "user" ? "user-message" : "jarvis-message"}`;
-  const icon = document.createElement("span");
-  icon.textContent = sender === "user" ? "YOU" : "J";
-  const bubble = document.createElement("p");
-  bubble.textContent = text;
-  row.append(icon, bubble);
-  chatLog.appendChild(row);
-  chatLog.scrollTop = chatLog.scrollHeight;
+onAuthStateChanged(auth, async user => {
+  if ($("loginPanel")) $("loginPanel").classList.add("hidden");
+  if ($("dashboard")) $("dashboard").classList.add("hidden");
+
+  if (user) {
+    if ($("dashboard")) $("dashboard").classList.remove("hidden");
+    $("systemStatus").textContent = "SYS: ONLINE";
+    $("userName").textContent = user.displayName || "Operator";
+    $("authState").textContent = "AUTH: SECURE";
+
+    try {
+      await setDoc(doc(db, "users", user.uid), { uid: user.uid, name: user.displayName, email: user.email, lastLogin: serverTimestamp() }, { merge: true });
+      $("profileState").textContent = "SYNCED";
+    } catch (e) {
+      $("profileState").textContent = "ERROR";
+    }
+  } else {
+    if ($("loginPanel")) $("loginPanel").classList.remove("hidden");
+    $("systemStatus").textContent = "SYS: OFFLINE";
+  }
+});
+
+// Chat & Memory
+const chatBox = $("chatContainer");
+let chatHistory = [];
+
+function addMsg(text, sender, isError = false) {
+  if (chatBox.children.length === 1 && chatBox.children[0].textContent.includes("Systems initialized")) chatBox.innerHTML = "";
+  const div = document.createElement("div");
+  div.className = `msg ${isError ? 'error' : sender}`;
+  div.textContent = text;
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+  return div;
 }
 
-async function handleCommand(raw) {
-  const command = raw.trim();
-  if (!command) return;
+async function sendCommand() {
+  const input = $("commandInput");
+  const text = input.value.trim();
+  if (!text) return;
   
-  addMessage(command, "user");
-  commandInput.value = "";
-  chatHistory.push({ sender: "user", text: command });
+  addMsg(text, "user");
+  input.value = "";
+  chatHistory.push({ sender: "user", text: text });
   
-  document.body.classList.add("thinking");
-  const typing = addMessage("...", "jarvis");
-
+  const typing = addMsg("...", "jarvis");
+  
   try {
     const res = await fetch(JARVIS_BACKEND + "/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: command, history: chatHistory.slice(0, -1) })
+      body: JSON.stringify({ message: text, history: chatHistory.slice(0, -1) })
     });
     const data = await res.json();
     if (typing) typing.remove();
-    document.body.classList.remove("thinking");
-    
+
     if (data.reply) { 
-      addMessage(data.reply, "jarvis"); 
+      addMsg(data.reply, "jarvis"); 
       chatHistory.push({ sender: "jarvis", text: data.reply });
-      if (chatHistory.length > 10) chatHistory.shift(); 
+      if (chatHistory.length > 10) chatHistory.shift();
       speak(data.reply); 
-    } else { throw new Error(); }
+    } else throw new Error();
   } catch (e) {
     if (typing) typing.remove();
-    document.body.classList.remove("thinking");
-    addMessage("System Error.", "jarvis", true);
+    addMsg("System Error.", "jarvis", true);
   }
 }
 
-$("#commandForm").addEventListener("submit", (event) => {
-  event.preventDefault();
-  handleCommand(commandInput.value);
-});
+$("sendBtn").onclick = sendCommand;
+$("commandInput").addEventListener("keydown", e => { if (e.key === "Enter") sendCommand(); });
 
-// --- AUTH ---
-$("#loginBtn").onclick = () => signInWithPopup(auth, provider).catch(e => alert(e.message));
-$("#logoutBtn").onclick = () => signOut(auth);
-
-onAuthStateChanged(auth, async user => {
-  if (user) {
-    $("#userName").textContent = user.displayName ? user.displayName.split(" ")[0] : "Commander";
-    $("#authState").textContent = "AUTH: SECURE";
-    $("#authStatus").textContent = "CONNECTED";
-    $("#authStatus").className = "tag tag-live";
-    $("#systemStatus").textContent = "ONLINE";
-    try {
-      await setDoc(doc(db, "users", user.uid), { uid: user.uid, name: user.displayName, email: user.email, lastLogin: serverTimestamp() }, { merge: true });
-      $("#profileState").textContent = "Cloud Sync: SYNCED";
-    } catch (e) { $("#profileState").textContent = "Sync Error"; }
-  } else {
-    $("#userName").textContent = "Commander.";
-    $("#authState").textContent = "AUTH: WAITING";
-    $("#authStatus").textContent = "PENDING";
-    $("#authStatus").className = "tag tag-pending";
-    $("#systemStatus").textContent = "OFFLINE";
-    $("#profileState").textContent = "Cloud Sync: WAITING";
-  }
-});
-
-// --- MIC & WAKE WORD (NO LOOP BUG) ---
+// Mic (Fixed Loop)
 let recognition = null;
 let isListeningMode = false;
+const micBtn = $("micBtn");
+const micIndicator = $("micIndicator");
 
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-if (SpeechRecognition) {
-  micButton.addEventListener("click", () => {
+if (micBtn) {
+  micBtn.onclick = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return alert("Use Chrome.");
+    
     if (isListeningMode) { stopMic(); return; }
     startWakeWord();
-  });
+  };
 }
 
 function startWakeWord() {
-  recognition = new SpeechRecognition();
-  recognition.lang = "hi-IN"; // Hindi / English
-  recognition.continuous = false; // सिर्फ एक बार सुनेगा, लूप नहीं बनेगा
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = "hi-IN"; 
+  recognition.continuous = false; // Loop fix
   recognition.interimResults = false;
 
   recognition.onstart = () => {
     isListeningMode = true;
-    micButton.classList.add("listening");
-    micLabel.textContent = "LISTENING...";
-    voiceHint.textContent = "Boliye... (Say Hey Jarvis)";
+    micBtn.classList.add("listening");
+    micIndicator.classList.add("on");
+    micIndicator.textContent = "LISTENING (Say 'Hey Jarvis')";
   };
 
   recognition.onresult = (event) => {
-    const transcript = event.results[0][0].transcript.toLowerCase();
-    
-    if (transcript.includes("hey jarvis") || transcript.includes("hello jarvis")) {
-      micLabel.textContent = "YES SIR?";
-      voiceHint.textContent = "Listening to command...";
-      setTimeout(listenForCommand, 300); // 0.3 सेकंड बाद कमांड सुनें
+    const t = event.results[0][0].transcript.toLowerCase();
+    if (t.includes("hey jarvis") || t.includes("hello jarvis") || t.includes("हे जार्विस")) {
+      micIndicator.textContent = "ACTIVE...";
+      setTimeout(listenForCommand, 300);
     } else {
-      // अगर 'Hey Jarvis' नहीं बोला, तो फिर से सुनो
-      micLabel.textContent = "TRY AGAIN";
-      voiceHint.textContent = "I didn't hear 'Hey Jarvis'.";
-      stopMic();
+      stopMic(); // अगर गलत बोला तो बंद करो
     }
   };
 
   recognition.onerror = () => stopMic();
-  recognition.onend = () => { if (isListeningMode && micLabel.textContent === "LISTENING...") stopMic(); };
+  recognition.onend = () => { if (isListeningMode && micIndicator.textContent.includes("LISTENING")) stopMic(); };
   recognition.start();
 }
 
 function listenForCommand() {
-  recognition = new SpeechRecognition();
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
   recognition.lang = "hi-IN"; 
   recognition.continuous = false;
 
   recognition.onresult = (event) => {
     const command = event.results[0][0].transcript;
-    handleCommand(command);
+    if ($("commandInput")) $("commandInput").value = command;
+    sendCommand();
   };
-  recognition.onend = () => stopMic(); // कमांड के बाद माइक खुद बंद हो जाएगा
+  recognition.onend = () => stopMic();
   recognition.onerror = () => stopMic();
   recognition.start();
 }
@@ -188,45 +178,6 @@ function listenForCommand() {
 function stopMic() {
   isListeningMode = false;
   if (recognition) { recognition.onend = null; recognition.stop(); recognition = null; }
-  micButton.classList.remove("listening");
-  micLabel.textContent = "TAP TO SPEAK";
-  voiceHint.textContent = "Say 'Hey Jarvis' or click to speak.";
+  if (micBtn) micBtn.classList.remove("listening");
+  if (micIndicator) { micIndicator.classList.remove("on"); micIndicator.textContent = "VOICE: OFF"; }
 }
-
-// --- SVG HUD ANIMATION (Simplified for Mobile Performance) ---
-(() => {
-  const NS = 'http://www.w3.org/2000/svg', hud = document.querySelector('#hud');
-  const C = '#38e8ff', O = '#ff8a2a';
-  let seed = 7;
-  const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
-  const rad = d => d * Math.PI / 180;
-  const pt = (r, a) => [Math.cos(rad(a)) * r, Math.sin(rad(a)) * r];
-  
-  function el(tag, at, parent) {
-    const e = document.createElementNS(NS, tag);
-    for (const k in at) e.setAttribute(k, at[k]);
-    (parent || hud).appendChild(e);
-    return e;
-  }
-  
-  const layer = (sp, R) => {
-    const g = el('g', { class: 'rot', style: `animation-duration:${Math.abs(sp)}s; animation-direction:${sp < 0 ? 'reverse' : 'normal'}` });
-    el('circle', { r: R, fill: 'none', stroke: 'none' }, g);
-    return g;
-  };
-  
-  const ring = (g, r, w, col, op) => el('circle', { r, fill: 'none', stroke: col, 'stroke-width': w, opacity: op }, g);
-  
-  let g = layer(100, 200);
-  ring(g, 150, 1, C, .5);
-  
-  g = layer(-80, 150);
-  ring(g, 120, .8, C, .6);
-  
-  g = layer(50, 100);
-  ring(g, 80, 1.5, C, .8);
-  
-  el('circle', { class: 'glowc', r: 40, fill: 'rgba(56,232,255,0.2)' });
-  el('circle', { r: 15, fill: '#fff', opacity: 0.8 });
-
-})();
