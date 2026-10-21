@@ -20,7 +20,7 @@ const $ = id => document.getElementById(id);
 
 setPersistence(auth, browserLocalPersistence).catch(console.error);
 
-// Voice
+// Voice Setup
 let voiceEnabled = true;
 let selectedVoice = null;
 if ("speechSynthesis" in window) {
@@ -40,7 +40,7 @@ function speak(text) {
   window.speechSynthesis.speak(u);
 }
 
-// Auth
+// Auth Logic
 $("loginBtn").onclick = () => signInWithPopup(auth, provider).catch(e => alert(e.message));
 $("logoutBtn").onclick = () => signOut(auth);
 
@@ -52,8 +52,7 @@ onAuthStateChanged(auth, async user => {
     if ($("dashboard")) $("dashboard").classList.remove("hidden");
     $("systemStatus").textContent = "SYS: ONLINE";
     $("userName").textContent = user.displayName || "Operator";
-    $("authState").textContent = "AUTH: SECURE";
-
+    
     try {
       await setDoc(doc(db, "users", user.uid), { uid: user.uid, name: user.displayName, email: user.email, lastLogin: serverTimestamp() }, { merge: true });
       $("profileState").textContent = "SYNCED";
@@ -66,18 +65,24 @@ onAuthStateChanged(auth, async user => {
   }
 });
 
-// Chat & Memory
+// Chat Logic (Fixed to match new UI structure)
 const chatBox = $("chatContainer");
 let chatHistory = [];
 
 function addMsg(text, sender, isError = false) {
   if (chatBox.children.length === 1 && chatBox.children[0].textContent.includes("Systems initialized")) chatBox.innerHTML = "";
-  const div = document.createElement("div");
-  div.className = `msg ${isError ? 'error' : sender}`;
-  div.textContent = text;
-  chatBox.appendChild(div);
+  
+  const msgDiv = document.createElement("div");
+  msgDiv.className = `msg ${isError ? 'error' : sender}`;
+  
+  const content = document.createElement("div");
+  content.className = "msg-content";
+  content.textContent = text;
+  
+  msgDiv.appendChild(content);
+  chatBox.appendChild(msgDiv);
   chatBox.scrollTop = chatBox.scrollHeight;
-  return div;
+  return msgDiv;
 }
 
 async function sendCommand() {
@@ -93,9 +98,19 @@ async function sendCommand() {
   
   try {
     const res = await fetch(JARVIS_BACKEND + "/api/chat", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, history: chatHistory.slice(0, -1) })
+      method: "POST", 
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        message: text, 
+        history: chatHistory.slice(0, -1) 
+      })
     });
+    
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || `Server Error: ${res.status}`);
+    }
+
     const data = await res.json();
     if (typing) typing.remove();
 
@@ -104,17 +119,19 @@ async function sendCommand() {
       chatHistory.push({ sender: "jarvis", text: data.reply });
       if (chatHistory.length > 10) chatHistory.shift();
       speak(data.reply); 
-    } else throw new Error();
+    } else {
+      throw new Error("Invalid response format from server.");
+    }
   } catch (e) {
     if (typing) typing.remove();
-    addMsg("System Error.", "jarvis", true);
+    addMsg("Error: " + e.message, "jarvis", true);
   }
 }
 
 $("sendBtn").onclick = sendCommand;
 $("commandInput").addEventListener("keydown", e => { if (e.key === "Enter") sendCommand(); });
 
-// Mic (Fixed Loop)
+// Mic System
 let recognition = null;
 let isListeningMode = false;
 const micBtn = $("micBtn");
@@ -123,7 +140,7 @@ const micIndicator = $("micIndicator");
 if (micBtn) {
   micBtn.onclick = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return alert("Use Chrome.");
+    if (!SR) return alert("Browser voice support nahi karta.");
     
     if (isListeningMode) { stopMic(); return; }
     startWakeWord();
@@ -134,7 +151,7 @@ function startWakeWord() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SR();
   recognition.lang = "hi-IN"; 
-  recognition.continuous = false; // Loop fix
+  recognition.continuous = false; 
   recognition.interimResults = false;
 
   recognition.onstart = () => {
@@ -146,16 +163,16 @@ function startWakeWord() {
 
   recognition.onresult = (event) => {
     const t = event.results[0][0].transcript.toLowerCase();
-    if (t.includes("hey jarvis") || t.includes("hello jarvis") || t.includes("हे जार्विस")) {
-      micIndicator.textContent = "ACTIVE...";
+    if (t.includes("hey jarvis") || t.includes("hello jarvis")) {
+      micIndicator.textContent = "YES SIR?";
       setTimeout(listenForCommand, 300);
     } else {
-      stopMic(); // अगर गलत बोला तो बंद करो
+      stopMic();
     }
   };
 
   recognition.onerror = () => stopMic();
-  recognition.onend = () => { if (isListeningMode && micIndicator.textContent.includes("LISTENING")) stopMic(); };
+  recognition.onend = () => { if (isListeningMode) stopMic(); };
   recognition.start();
 }
 
