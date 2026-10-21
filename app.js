@@ -1,27 +1,8 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
-
 // ========================================
-// FIREBASE CONFIG
+// CONFIG & SETUP
 // ========================================
-const firebaseConfig = {
-  apiKey: "AIzaSyCIiomQVg4N5Fnp9u15yXasBfuny8Of6FQ",
-  authDomain: "jarvis-44a31.firebaseapp.com",
-  projectId: "jarvis-44a31",
-  storageBucket: "jarvis-44a31.firebasestorage.app",
-  messagingSenderId: "330404685457",
-  appId: "1:330404685457:web:20e0539a2a145717cfc130"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const provider = new GoogleAuthProvider();
 const JARVIS_BACKEND = "https://jarvis-7es3.onrender.com"; 
-
 const $ = id => document.getElementById(id);
-setPersistence(auth, browserLocalPersistence).catch(console.error);
 
 // ========================================
 // UI ELEMENTS
@@ -69,41 +50,7 @@ function speak(text) {
 }
 
 // ========================================
-// AUTHENTICATION & MEMORY
-// ========================================
-$("loginBtn").onclick = () => signInWithPopup(auth, provider).catch(e => alert(e.message));
-
-onAuthStateChanged(auth, async user => {
-  if ($("loginPanel")) $("loginPanel").classList.add("hidden");
-  if ($("dashboard")) $("dashboard").classList.add("hidden");
-
-  if (user) {
-    if ($("dashboard")) $("dashboard").classList.remove("hidden");
-    $("statusText").textContent = "ONLINE";
-    $("userName").textContent = user.displayName ? user.displayName.split(" ")[0] : "Boss";
-    
-    try {
-      const docRef = doc(db, "users", user.uid);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists() && docSnap.data().memory) {
-        chatHistory = docSnap.data().memory;
-      }
-      
-      await setDoc(doc(db, "users", user.uid), { 
-        uid: user.uid, name: user.displayName, email: user.email, lastLogin: serverTimestamp() 
-      }, { merge: true });
-      $("connectionLabel").textContent = "SYNCED";
-    } catch (e) {
-      console.error("Firestore error:", e);
-    }
-  } else {
-    if ($("loginPanel")) $("loginPanel").classList.remove("hidden");
-    $("statusText").textContent = "OFFLINE";
-  }
-});
-
-// ========================================
-// CHAT SYSTEM
+// CHAT SYSTEM & MEMORY
 // ========================================
 let chatHistory = [];
 
@@ -122,15 +69,6 @@ function addMessage(text, who = "jarvis") {
   return bubble;
 }
 
-async function saveMemory() {
-  const user = auth.currentUser;
-  if (user) {
-    try {
-      await setDoc(doc(db, "users", user.uid), { memory: chatHistory.slice(-20) }, { merge: true });
-    } catch (e) { console.error("Memory save failed", e); }
-  }
-}
-
 async function sendMessage(text) {
   text = text.trim();
   if (!text) return;
@@ -140,7 +78,6 @@ async function sendMessage(text) {
   toast.textContent = "";
   
   chatHistory.push({ sender: "user", text: text });
-  saveMemory();
 
   if (coreOrb) coreOrb.className = "core thinking";
   if (coreCaption) coreCaption.textContent = "PROCESSING...";
@@ -167,7 +104,6 @@ async function sendMessage(text) {
 
     chatHistory.push({ sender: "jarvis", text: reply });
     if (chatHistory.length > 20) chatHistory.shift();
-    saveMemory();
 
     if (coreOrb) coreOrb.className = "core";
     if (coreCaption) coreCaption.textContent = "CORE ACTIVE";
@@ -256,4 +192,4 @@ document.querySelectorAll("[data-action]").forEach(button => {
     };
     sendMessage(prompts[action]);
   });
-}); 
+});
