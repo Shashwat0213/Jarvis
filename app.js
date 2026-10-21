@@ -81,6 +81,7 @@ async function sendMessage(text) {
 
   if (coreOrb) coreOrb.className = "core thinking";
   if (coreCaption) coreCaption.textContent = "PROCESSING...";
+  $("connectionLabel").textContent = "CONNECTING...";
 
   const waiting = addMessage("Establishing secure connection...");
 
@@ -130,11 +131,8 @@ $("chatForm").addEventListener("submit", event => {
 });
 
 // ========================================
-// MIC & WAKE WORD ("Hey Jarvis")
+// MIC & VOICE INPUT
 // ========================================
-let recognition = null;
-let isListeningMode = false;
-
 function startVoice() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
@@ -142,8 +140,8 @@ function startVoice() {
     return;
   }
 
-  recognition = new SR();
-  recognition.lang = "en-IN";
+  const recognition = new SR();
+  recognition.lang = "hi-IN"; // Hindi/English
   recognition.interimResults = false;
   recognition.maxAlternatives = 1;
 
@@ -179,17 +177,27 @@ function startVoice() {
 micBtn.addEventListener("click", startVoice);
 
 // ========================================
-// QUICK ACTIONS
+// 🚀 QUICK ACCESS BUTTONS (Now Working)
 // ========================================
 document.querySelectorAll("[data-action]").forEach(button => {
   button.addEventListener("click", () => {
     const action = button.dataset.action;
-    if (action === "voice") { startVoice(); return; }
+    
+    // 1. Voice Mode Button
+    if (action === "voice") { 
+      startVoice(); 
+      return; 
+    }
+    
+    // 2. Other Buttons (Send prompts to JARVIS)
     const prompts = {
-      projects: "Help me manage my JARVIS and MCU Tracker projects.",
-      device: "Tell me which device tools are available in this web interface.",
-      memory: "Help me organize my project notes and important information."
+      projects: "Jarvis, give me an update on my MCU Tracker and SineVault projects.",
+      device: "Jarvis, what device tools can you access from this browser interface?",
+      memory: "Jarvis, help me organize my daily notes and important information."
     };
-    sendMessage(prompts[action]);
+    
+    if (prompts[action]) {
+      sendMessage(prompts[action]);
+    }
   });
 });
