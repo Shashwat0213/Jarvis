@@ -256,4 +256,4 @@ document.querySelectorAll("[data-action]").forEach(button => {
     };
     sendMessage(prompts[action]);
   });
-});
+}); 
