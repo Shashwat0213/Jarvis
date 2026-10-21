@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCIiomQVg4N5Fnp9u15yXasBfuny8Of6FQ",
@@ -18,18 +18,9 @@ const provider = new GoogleAuthProvider();
 const JARVIS_BACKEND = "https://jarvis-7es3.onrender.com"; 
 const $ = id => document.getElementById(id);
 
-// Core state: idle | listening | thinking | speaking
-const core = $("core");
-const CORE_LABEL = { idle: "Standby", listening: "Listening", thinking: "Processing", speaking: "Speaking" };
-function setCore(state, onlyIf) {
-  if (!core || (onlyIf && core.dataset.state !== onlyIf)) return;
-  core.dataset.state = state;
-  $("coreState").textContent = CORE_LABEL[state];
-}
-
 setPersistence(auth, browserLocalPersistence).catch(console.error);
 
-// Voice
+// --- VOICE SETUP ---
 let voiceEnabled = true;
 let selectedVoice = null;
 if ("speechSynthesis" in window) {
@@ -40,18 +31,24 @@ if ("speechSynthesis" in window) {
   loadVoices();
   window.speechSynthesis.onvoiceschanged = loadVoices;
 }
+
 function speak(text) {
   if (!voiceEnabled || !("speechSynthesis" in window)) return;
   window.speechSynthesis.cancel();
+  
+  const orb = $("coreOrb");
+  if (orb) orb.className = "core-orb speaking";
+
   const u = new SpeechSynthesisUtterance(text);
-  u.rate = 1.0; u.pitch = 0.9; u.lang = "hi-IN";
+  u.rate = 1.0; u.pitch = 0.9; 
+  u.lang = "hi-IN";
   if (selectedVoice) u.voice = selectedVoice;
-  u.onstart = () => setCore("speaking");
-  u.onend = u.onerror = () => setCore("idle", "speaking");
+  
+  u.onend = () => { if (orb) orb.className = "core-orb"; };
   window.speechSynthesis.speak(u);
 }
 
-// Auth
+// --- AUTH ---
 $("loginBtn").onclick = () => signInWithPopup(auth, provider).catch(e => alert(e.message));
 $("logoutBtn").onclick = () => signOut(auth);
 
@@ -63,12 +60,21 @@ onAuthStateChanged(auth, async user => {
     if ($("dashboard")) $("dashboard").classList.remove("hidden");
     $("systemStatus").textContent = "SYS: ONLINE";
     $("userName").textContent = user.displayName || "Operator";
-    $("authState").textContent = "AUTH: SECURE";
-
+    
+    // Load Memory from Firestore
     try {
-      await setDoc(doc(db, "users", user.uid), { uid: user.uid, name: user.displayName, email: user.email, lastLogin: serverTimestamp() }, { merge: true });
+      const docRef = doc(db, "users", user.uid);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists() && docSnap.data().memory) {
+        chatHistory = docSnap.data().memory;
+      }
+      
+      await setDoc(doc(db, "users", user.uid), { 
+        uid: user.uid, name: user.displayName, email: user.email, lastLogin: serverTimestamp() 
+      }, { merge: true });
       $("profileState").textContent = "SYNCED";
     } catch (e) {
+      console.error("Firestore error:", e);
       $("profileState").textContent = "ERROR";
     }
   } else {
@@ -77,18 +83,33 @@ onAuthStateChanged(auth, async user => {
   }
 });
 
-// Chat & Memory
+// --- CHAT & MEMORY ---
 const chatBox = $("chatContainer");
-let chatHistory = [];
+let chatHistory = []; // Memory Array
 
 function addMsg(text, sender, isError = false) {
   if (chatBox.children.length === 1 && chatBox.children[0].textContent.includes("Systems initialized")) chatBox.innerHTML = "";
-  const div = document.createElement("div");
-  div.className = `msg ${isError ? 'error' : sender}`;
-  div.textContent = text;
-  chatBox.appendChild(div);
+  
+  const msgDiv = document.createElement("div");
+  msgDiv.className = `msg ${isError ? 'error' : sender}`;
+  
+  const content = document.createElement("div");
+  content.className = "msg-content";
+  content.textContent = text;
+  
+  msgDiv.appendChild(content);
+  chatBox.appendChild(msgDiv);
   chatBox.scrollTop = chatBox.scrollHeight;
-  return div;
+  return msgDiv;
+}
+
+async function saveMemory() {
+  const user = auth.currentUser;
+  if (user) {
+    try {
+      await setDoc(doc(db, "users", user.uid), { memory: chatHistory.slice(-20) }, { merge: true });
+    } catch (e) { console.error("Memory save failed", e); }
+  }
 }
 
 async function sendCommand() {
@@ -99,52 +120,59 @@ async function sendCommand() {
   addMsg(text, "user");
   input.value = "";
   chatHistory.push({ sender: "user", text: text });
+  saveMemory(); // Save Memory
   
-  setCore("thinking");
-  const typing = addMsg("", "jarvis typing");
+  const orb = $("coreOrb");
+  if (orb) orb.className = "core-orb thinking";
+  
+  const typing = addMsg("...", "jarvis");
   
   try {
     const res = await fetch(JARVIS_BACKEND + "/api/chat", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, history: chatHistory.slice(0, -1) })
+      method: "POST", 
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        message: text, 
+        history: chatHistory.slice(0, -1) 
+      })
     });
+    
+    if (!res.ok) throw new Error("Server Error");
+
     const data = await res.json();
     if (typing) typing.remove();
 
     if (data.reply) { 
       addMsg(data.reply, "jarvis"); 
       chatHistory.push({ sender: "jarvis", text: data.reply });
-      if (chatHistory.length > 10) chatHistory.shift();
-      setCore("idle");
+      if (chatHistory.length > 20) chatHistory.shift(); // Limit memory
+      saveMemory(); // Save Memory
       speak(data.reply); 
-    } else throw new Error();
+    } else {
+      throw new Error("Invalid response");
+    }
   } catch (e) {
     if (typing) typing.remove();
-    setCore("idle");
-    addMsg("Could not reach J.A.R.V.I.S. The server may be waking up, so try again in a minute.", "jarvis", true);
+    if (orb) orb.className = "core-orb error";
+    addMsg("Error: " + e.message, "jarvis", true);
+    setTimeout(() => { if (orb) orb.className = "core-orb"; }, 2000);
   }
 }
 
 $("sendBtn").onclick = sendCommand;
-document.querySelectorAll(".sug").forEach(b => b.onclick = () => { $("commandInput").value = b.dataset.q; sendCommand(); });
-$("voiceToggle").onclick = () => {
-  voiceEnabled = !voiceEnabled;
-  $("voiceToggle").textContent = voiceEnabled ? "🔊" : "🔇";
-  $("voiceToggle").setAttribute("aria-pressed", String(!voiceEnabled));
-  if (!voiceEnabled && "speechSynthesis" in window) window.speechSynthesis.cancel();
-};
 $("commandInput").addEventListener("keydown", e => { if (e.key === "Enter") sendCommand(); });
 
-// Mic (Fixed Loop)
+// --- MIC & WAKE WORD ---
 let recognition = null;
 let isListeningMode = false;
 const micBtn = $("micBtn");
 const micIndicator = $("micIndicator");
+const coreOrb = $("coreOrb");
 
 if (micBtn) {
   micBtn.onclick = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return alert("Use Chrome.");
+    if (!SR) return alert("Browser voice support nahi karta.");
     
     if (isListeningMode) { stopMic(); return; }
     startWakeWord();
@@ -155,29 +183,30 @@ function startWakeWord() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SR();
   recognition.lang = "hi-IN"; 
-  recognition.continuous = false; // Loop fix
+  recognition.continuous = false; 
   recognition.interimResults = false;
 
   recognition.onstart = () => {
     isListeningMode = true;
     micBtn.classList.add("listening");
-    setCore("listening");
     micIndicator.classList.add("on");
-    micIndicator.textContent = "LISTENING (Say 'Hey Jarvis')";
+    micIndicator.textContent = "LISTENING...";
+    if (coreOrb) coreOrb.className = "core-orb listening";
+    speak("Yes Sir, I am listening."); // Voice Feedback
   };
 
   recognition.onresult = (event) => {
     const t = event.results[0][0].transcript.toLowerCase();
-    if (t.includes("hey jarvis") || t.includes("hello jarvis") || t.includes("हे जार्विस")) {
-      micIndicator.textContent = "ACTIVE...";
+    if (t.includes("hey jarvis") || t.includes("hello jarvis")) {
+      micIndicator.textContent = "YES SIR?";
       setTimeout(listenForCommand, 300);
     } else {
-      stopMic(); // अगर गलत बोला तो बंद करो
+      stopMic();
     }
   };
 
   recognition.onerror = () => stopMic();
-  recognition.onend = () => { if (isListeningMode && micIndicator.textContent.includes("LISTENING")) stopMic(); };
+  recognition.onend = () => { if (isListeningMode) stopMic(); };
   recognition.start();
 }
 
@@ -201,6 +230,6 @@ function stopMic() {
   isListeningMode = false;
   if (recognition) { recognition.onend = null; recognition.stop(); recognition = null; }
   if (micBtn) micBtn.classList.remove("listening");
-  setCore("idle", "listening");
   if (micIndicator) { micIndicator.classList.remove("on"); micIndicator.textContent = "VOICE: OFF"; }
+  if (coreOrb && coreOrb.classList.contains("listening")) coreOrb.className = "core-orb";
 }
