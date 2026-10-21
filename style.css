@@ -179,4 +179,4 @@ body {
   .controls-row { grid-template-columns: 1fr; }
   .top-hud { flex-direction: column; gap: 10px; }
   .app { padding: 10px; }
-}
+} 
