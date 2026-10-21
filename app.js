@@ -61,7 +61,6 @@ onAuthStateChanged(auth, async user => {
     $("systemStatus").textContent = "SYS: ONLINE";
     $("userName").textContent = user.displayName || "Operator";
     
-    // Load Memory from Firestore
     try {
       const docRef = doc(db, "users", user.uid);
       const docSnap = await getDoc(docRef);
@@ -83,9 +82,9 @@ onAuthStateChanged(auth, async user => {
   }
 });
 
-// --- CHAT & MEMORY ---
+// --- CHAT ---
 const chatBox = $("chatContainer");
-let chatHistory = []; // Memory Array
+let chatHistory = [];
 
 function addMsg(text, sender, isError = false) {
   if (chatBox.children.length === 1 && chatBox.children[0].textContent.includes("Systems initialized")) chatBox.innerHTML = "";
@@ -120,7 +119,7 @@ async function sendCommand() {
   addMsg(text, "user");
   input.value = "";
   chatHistory.push({ sender: "user", text: text });
-  saveMemory(); // Save Memory
+  saveMemory();
   
   const orb = $("coreOrb");
   if (orb) orb.className = "core-orb thinking";
@@ -145,8 +144,8 @@ async function sendCommand() {
     if (data.reply) { 
       addMsg(data.reply, "jarvis"); 
       chatHistory.push({ sender: "jarvis", text: data.reply });
-      if (chatHistory.length > 20) chatHistory.shift(); // Limit memory
-      saveMemory(); // Save Memory
+      if (chatHistory.length > 20) chatHistory.shift();
+      saveMemory();
       speak(data.reply); 
     } else {
       throw new Error("Invalid response");
@@ -192,7 +191,7 @@ function startWakeWord() {
     micIndicator.classList.add("on");
     micIndicator.textContent = "LISTENING...";
     if (coreOrb) coreOrb.className = "core-orb listening";
-    speak("Yes Sir, I am listening."); // Voice Feedback
+    speak("Yes Sir, I am listening.");
   };
 
   recognition.onresult = (event) => {
