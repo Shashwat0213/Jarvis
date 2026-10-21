@@ -8,202 +8,182 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ========================================
-// CONFIG (Gemini Fallback Chain)
+// CONFIGURATION
 // ========================================
-
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// स्मार्ट स्विचिंग के लिए मॉडल्स का क्रम
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models";
+
+// मॉडल्स का क्रम (पहले Groq, फिर Gemini)
 const MODEL_CHAIN = [
-  "gemini-3.8-flash",
-  "gemini-3.5-flash-lite",
-  "gemini-2.5-flash"
+  { provider: "groq", model: "llama-3.3-70b-versatile" }, // सबसे स्मार्ट Groq मॉडल
+  { provider: "groq", model: "llama-3.1-8b-instant" },    // सबसे तेज़ Groq मॉडल
+  { provider: "gemini", model: "gemini-3.8-flash" },      // बैकअप के लिए Gemini
+  { provider: "gemini", model: "gemini-2.5-flash" }
 ];
 
 const ALLOWED_ORIGINS = [
   "https://shashwat0213.github.io",
   "http://localhost:3000",
-  "http://localhost:5500",
-  "http://127.0.0.1:5500"
+  "http://localhost:5500"
 ];
 
 // ========================================
-// SECURITY HEADERS & CORS
+// MIDDLEWARE
 // ========================================
-
-app.use((req, res, next) => {
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("X-Frame-Options", "DENY");
-  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  res.setHeader("Permissions-Policy", "microphone=(self)");
-  res.removeHeader("X-Powered-By");
-  next();
-});
-
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
     if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
-    if (origin.startsWith("https://shashwat0213.github.io")) {
-      return callback(null, true);
-    }
-    console.warn("CORS BLOCKED:", origin);
+    if (origin.startsWith("https://shashwat0213.github.io")) return callback(null, true);
     return callback(new Error("Not allowed by CORS"));
   },
   methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Accept"],
-  credentials: false
+  allowedHeaders: ["Content-Type", "Accept"]
 }));
 
-app.use(express.json({ limit: "100kb" }));
+app.use(express.json({ limit: "1mb" }));
 
 // ========================================
-// RATE LIMITING
+// AI PROVIDERS
 // ========================================
 
-const rateLimitMap = new Map();
-const RATE_LIMIT_WINDOW = 60 * 1000;
-const RATE_LIMIT_MAX = 20;
-
-function rateLimit(req, res, next) {
-  const ip = req.ip || req.headers["x-forwarded-for"] || "unknown";
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip) || { count: 0, reset: now + RATE_LIMIT_WINDOW };
-
-  if (now > entry.reset) {
-    entry.count = 0;
-    entry.reset = now + RATE_LIMIT_WINDOW;
-  }
-
-  entry.count++;
-  rateLimitMap.set(ip, entry);
-
-  if (entry.count > RATE_LIMIT_MAX) {
-    return res.status(429).json({ error: "Too many requests. Please wait a minute." });
-  }
-  next();
+// 1. Groq API Call
+async function callGroq(model, message, history) {
+  const res = await fetch(GROQ_URL, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${GROQ_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [
+        { role: "system", content: "You are JARVIS, a highly intelligent personal AI assistant created by Shashwat. You speak with a polite, confident British tone. Address the user as 'Sir'." },
+        ...history,
+        { role: "user", content: message }
+      ],
+      temperature: 0.7,
+      max_tokens: 1024
+    })
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || `Groq Error ${res.status}`);
+  return data.choices[0].message.content;
 }
 
-// ========================================
-// GEMINI API CALL (Single Model)
-// ========================================
+// 2. Gemini API Call
+async function callGemini(model, message, history) {
+  // Gemini के लिए हिस्ट्री फॉर्मेट थोड़ा अलग होता है
+  const contents = history.map(msg => ({
+    role: msg.role === "user" ? "user" : "model",
+    parts: [{ text: msg.content }]
+  }));
+  contents.push({ role: "user", parts: [{ text: message }] });
 
-async function callGemini(model, message) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 25000);
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": GEMINI_API_KEY
+  const res = await fetch(`${GEMINI_URL}/${model}:generateContent?key=${GEMINI_API_KEY}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      systemInstruction: {
+        parts: [{ text: "You are JARVIS, a highly intelligent personal AI assistant created by Shashwat. You speak with a polite, confident British tone. Address the user as 'Sir'." }]
       },
-      signal: controller.signal,
-      body: JSON.stringify({
-        // 🧠 यहाँ JARVIS की पर्सनालिटी और प्रोजेक्ट्स की जानकारी दी गई है
-        systemInstruction: {
-          parts: [{ 
-            text: "You are JARVIS, the highly intelligent and loyal personal AI assistant created by Shashwat. " +
-                  "You speak with a polite, confident, and slightly witty British tone. " +
-                  "Address Shashwat as 'Sir' or 'Shashwat' occasionally. " +
-                  "Do not sound like a generic search engine; sound like a trusted partner. " +
-                  
-                  "Here is information about Shashwat's projects: " +
-                  "1. CINEVAULT: A personal web project for movies (like a movie vault or tracker). " +
-                  "2. MCU TRACKER: A web project dedicated to tracking Marvel Cinematic Universe (MCU) movies, shows, and timelines. " +
-                  
-                  "If Shashwat asks about these projects, provide helpful answers, ideas, or discuss them based on this context."
-          }]
-        },
-        contents: [{ role: "user", parts: [{ text: message }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 }
-      })
-    });
+      contents: contents,
+      generationConfig: { temperature: 0.7, maxOutputTokens: 1024 }
+    })
+  });
 
-    clearTimeout(timeout);
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(`${model} failed: ${data?.error?.message || response.status}`);
-    }
-
-    const reply = data?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("").trim();
-    if (!reply) throw new Error(`${model} returned empty response`);
-
-    return reply;
-  } catch (err) {
-    clearTimeout(timeout);
-    throw err;
-  }
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || `Gemini Error ${res.status}`);
+  return data.candidates[0].content.parts[0].text;
 }
 
 // ========================================
-// SMART FALLBACK (Try all models)
+// SMART ROUTER (Fallback Logic)
 // ========================================
-
-async function getJarvisReply(message) {
+async function getJarvisReply(message, history = []) {
   const errors = [];
-  for (const model of MODEL_CHAIN) {
+
+  for (const item of MODEL_CHAIN) {
     try {
-      console.log(`Trying model: ${model}`);
-      const reply = await callGemini(model, message);
-      console.log(`SUCCESS with model: ${model}`);
-      return { reply, model };
+      console.log(`Trying ${item.provider} model: ${item.model}`);
+      
+      let reply;
+      if (item.provider === "groq") {
+        if (!GROQ_API_KEY) throw new Error("Groq API key missing");
+        reply = await callGroq(item.model, message, history);
+      } else if (item.provider === "gemini") {
+        if (!GEMINI_API_KEY) throw new Error("Gemini API key missing");
+        reply = await callGemini(item.model, message, history);
+      }
+      
+      console.log(`✅ Success with ${item.model}`);
+      return { reply, provider: item.provider, model: item.model };
+
     } catch (err) {
-      console.warn(`Model ${model} failed:`, err.message);
-      errors.push(`${model}: ${err.message}`);
+      console.warn(`❌ Failed ${item.model}:`, err.message);
+      errors.push(`${item.model}: ${err.message}`);
     }
   }
-  throw new Error(`All models failed:\n${errors.join("\n")}`);
+
+  throw new Error("All AI models failed. Please try again later.");
 }
 
 // ========================================
 // ENDPOINTS
 // ========================================
-
 app.get("/", (req, res) => {
   res.json({
     status: "online",
-    provider: "Gemini",
-    persona: "JARVIS (Personal Assistant for Shashwat)",
-    models: MODEL_CHAIN,
-    apiKey: GEMINI_API_KEY ? "configured" : "MISSING",
-    message: "Jarvis backend is running."
+    system: "JARVIS",
+    providers: {
+      groq: GROQ_API_KEY ? "configured" : "missing",
+      gemini: GEMINI_API_KEY ? "configured" : "missing"
+    },
+    models: MODEL_CHAIN.map(m => m.model)
   });
 });
 
-app.post("/api/chat", rateLimit, async (req, res) => {
+app.post("/api/chat", async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message, history } = req.body;
+
     if (!message || typeof message !== "string") {
       return res.status(400).json({ error: "Message is required." });
     }
-    if (!GEMINI_API_KEY) {
-      return res.status(500).json({ error: "AI service is not configured." });
-    }
 
     console.log("JARVIS COMMAND:", message);
-    const { reply, model } = await getJarvisReply(message);
-    console.log(`JARVIS REPLY (via ${model}):`, reply);
-    
-    res.json({ reply, model });
+
+    // 🧠 Context Memory (Frontend se aayi history)
+    const formattedHistory = history && Array.isArray(history) ? history.map(h => ({
+      role: h.sender === "user" ? "user" : "assistant",
+      content: h.text
+    })) : [];
+
+    const result = await getJarvisReply(message, formattedHistory);
+
+    res.json({ 
+      reply: result.reply,
+      provider: result.provider,
+      model: result.model
+    });
 
   } catch (error) {
-    console.error("JARVIS SERVER ERROR:", error);
-    res.status(500).json({ error: "Jarvis is currently unable to respond. Please try again." });
+    console.error("SERVER ERROR:", error.message);
+    res.status(500).json({ error: "JARVIS is currently unable to respond." });
   }
 });
 
 // ========================================
 // START SERVER
 // ========================================
-
 app.listen(PORT, () => {
-  console.log(`JARVIS backend running on port ${PORT}`);
-  console.log(`Provider: Gemini (Fallback Chain)`);
-  console.log(`Models: ${MODEL_CHAIN.join(" → ")}`);
-  console.log(`API key: ${GEMINI_API_KEY ? "OK" : "MISSING"}`);
+  console.log(`🚀 JARVIS running on port ${PORT}`);
+  console.log(`Groq Key: ${GROQ_API_KEY ? "OK" : "MISSING"}`);
+  console.log(`Gemini Key: ${GEMINI_API_KEY ? "OK" : "MISSING"}`);
+  console.log("Model Chain:");
+  MODEL_CHAIN.forEach((m, i) => console.log(`  ${i+1}. ${m.provider} - ${m.model}`));
 });
