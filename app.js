@@ -18,9 +18,18 @@ const provider = new GoogleAuthProvider();
 const JARVIS_BACKEND = "https://jarvis-7es3.onrender.com"; 
 const $ = id => document.getElementById(id);
 
+// Core state: idle | listening | thinking | speaking
+const core = $("core");
+const CORE_LABEL = { idle: "Standby", listening: "Listening", thinking: "Processing", speaking: "Speaking" };
+function setCore(state, onlyIf) {
+  if (!core || (onlyIf && core.dataset.state !== onlyIf)) return;
+  core.dataset.state = state;
+  $("coreState").textContent = CORE_LABEL[state];
+}
+
 setPersistence(auth, browserLocalPersistence).catch(console.error);
 
-// Voice Setup
+// Voice
 let voiceEnabled = true;
 let selectedVoice = null;
 if ("speechSynthesis" in window) {
@@ -37,10 +46,12 @@ function speak(text) {
   const u = new SpeechSynthesisUtterance(text);
   u.rate = 1.0; u.pitch = 0.9; u.lang = "hi-IN";
   if (selectedVoice) u.voice = selectedVoice;
+  u.onstart = () => setCore("speaking");
+  u.onend = u.onerror = () => setCore("idle", "speaking");
   window.speechSynthesis.speak(u);
 }
 
-// Auth Logic
+// Auth
 $("loginBtn").onclick = () => signInWithPopup(auth, provider).catch(e => alert(e.message));
 $("logoutBtn").onclick = () => signOut(auth);
 
@@ -52,7 +63,8 @@ onAuthStateChanged(auth, async user => {
     if ($("dashboard")) $("dashboard").classList.remove("hidden");
     $("systemStatus").textContent = "SYS: ONLINE";
     $("userName").textContent = user.displayName || "Operator";
-    
+    $("authState").textContent = "AUTH: SECURE";
+
     try {
       await setDoc(doc(db, "users", user.uid), { uid: user.uid, name: user.displayName, email: user.email, lastLogin: serverTimestamp() }, { merge: true });
       $("profileState").textContent = "SYNCED";
@@ -65,24 +77,18 @@ onAuthStateChanged(auth, async user => {
   }
 });
 
-// Chat Logic (Fixed to match new UI structure)
+// Chat & Memory
 const chatBox = $("chatContainer");
 let chatHistory = [];
 
 function addMsg(text, sender, isError = false) {
   if (chatBox.children.length === 1 && chatBox.children[0].textContent.includes("Systems initialized")) chatBox.innerHTML = "";
-  
-  const msgDiv = document.createElement("div");
-  msgDiv.className = `msg ${isError ? 'error' : sender}`;
-  
-  const content = document.createElement("div");
-  content.className = "msg-content";
-  content.textContent = text;
-  
-  msgDiv.appendChild(content);
-  chatBox.appendChild(msgDiv);
+  const div = document.createElement("div");
+  div.className = `msg ${isError ? 'error' : sender}`;
+  div.textContent = text;
+  chatBox.appendChild(div);
   chatBox.scrollTop = chatBox.scrollHeight;
-  return msgDiv;
+  return div;
 }
 
 async function sendCommand() {
@@ -94,23 +100,14 @@ async function sendCommand() {
   input.value = "";
   chatHistory.push({ sender: "user", text: text });
   
-  const typing = addMsg("...", "jarvis");
+  setCore("thinking");
+  const typing = addMsg("", "jarvis typing");
   
   try {
     const res = await fetch(JARVIS_BACKEND + "/api/chat", {
-      method: "POST", 
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        message: text, 
-        history: chatHistory.slice(0, -1) 
-      })
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text, history: chatHistory.slice(0, -1) })
     });
-    
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.error || `Server Error: ${res.status}`);
-    }
-
     const data = await res.json();
     if (typing) typing.remove();
 
@@ -118,20 +115,27 @@ async function sendCommand() {
       addMsg(data.reply, "jarvis"); 
       chatHistory.push({ sender: "jarvis", text: data.reply });
       if (chatHistory.length > 10) chatHistory.shift();
+      setCore("idle");
       speak(data.reply); 
-    } else {
-      throw new Error("Invalid response format from server.");
-    }
+    } else throw new Error();
   } catch (e) {
     if (typing) typing.remove();
-    addMsg("Error: " + e.message, "jarvis", true);
+    setCore("idle");
+    addMsg("Could not reach J.A.R.V.I.S. The server may be waking up, so try again in a minute.", "jarvis", true);
   }
 }
 
 $("sendBtn").onclick = sendCommand;
+document.querySelectorAll(".sug").forEach(b => b.onclick = () => { $("commandInput").value = b.dataset.q; sendCommand(); });
+$("voiceToggle").onclick = () => {
+  voiceEnabled = !voiceEnabled;
+  $("voiceToggle").textContent = voiceEnabled ? "🔊" : "🔇";
+  $("voiceToggle").setAttribute("aria-pressed", String(!voiceEnabled));
+  if (!voiceEnabled && "speechSynthesis" in window) window.speechSynthesis.cancel();
+};
 $("commandInput").addEventListener("keydown", e => { if (e.key === "Enter") sendCommand(); });
 
-// Mic System
+// Mic (Fixed Loop)
 let recognition = null;
 let isListeningMode = false;
 const micBtn = $("micBtn");
@@ -140,7 +144,7 @@ const micIndicator = $("micIndicator");
 if (micBtn) {
   micBtn.onclick = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return alert("Browser voice support nahi karta.");
+    if (!SR) return alert("Use Chrome.");
     
     if (isListeningMode) { stopMic(); return; }
     startWakeWord();
@@ -151,28 +155,29 @@ function startWakeWord() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SR();
   recognition.lang = "hi-IN"; 
-  recognition.continuous = false; 
+  recognition.continuous = false; // Loop fix
   recognition.interimResults = false;
 
   recognition.onstart = () => {
     isListeningMode = true;
     micBtn.classList.add("listening");
+    setCore("listening");
     micIndicator.classList.add("on");
     micIndicator.textContent = "LISTENING (Say 'Hey Jarvis')";
   };
 
   recognition.onresult = (event) => {
     const t = event.results[0][0].transcript.toLowerCase();
-    if (t.includes("hey jarvis") || t.includes("hello jarvis")) {
-      micIndicator.textContent = "YES SIR?";
+    if (t.includes("hey jarvis") || t.includes("hello jarvis") || t.includes("हे जार्विस")) {
+      micIndicator.textContent = "ACTIVE...";
       setTimeout(listenForCommand, 300);
     } else {
-      stopMic();
+      stopMic(); // अगर गलत बोला तो बंद करो
     }
   };
 
   recognition.onerror = () => stopMic();
-  recognition.onend = () => { if (isListeningMode) stopMic(); };
+  recognition.onend = () => { if (isListeningMode && micIndicator.textContent.includes("LISTENING")) stopMic(); };
   recognition.start();
 }
 
@@ -196,5 +201,6 @@ function stopMic() {
   isListeningMode = false;
   if (recognition) { recognition.onend = null; recognition.stop(); recognition = null; }
   if (micBtn) micBtn.classList.remove("listening");
+  setCore("idle", "listening");
   if (micIndicator) { micIndicator.classList.remove("on"); micIndicator.textContent = "VOICE: OFF"; }
 }
