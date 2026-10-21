@@ -1,87 +1,182 @@
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Share Tech Mono', monospace; background: #02060a; color: #00e5ff; min-height: 100vh; overflow-y: auto; overflow-x: hidden; }
+body {
+  font-family: 'Share Tech Mono', monospace;
+  background: #02060a;
+  color: #e0f2fe;
+  min-height: 100vh;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
 .hidden { display: none !important; }
 
-.bg-glow { position: fixed; inset: 0; background: radial-gradient(circle at 50% 30%, rgba(0, 229, 255, 0.1), transparent 60%); z-index: -2; }
-.scanlines { position: fixed; inset: 0; background: linear-gradient(transparent 50%, rgba(0,229,255,0.03) 50%); background-size: 100% 4px; z-index: -1; pointer-events: none; }
+/* Background Effects */
+.bg-glow {
+  position: fixed;
+  top: -50%; left: -50%; width: 200%; height: 200%;
+  background: radial-gradient(circle at 50% 50%, rgba(0, 229, 255, 0.15), transparent 60%);
+  z-index: -2;
+  animation: bgPulse 10s infinite alternate;
+}
+.scanlines {
+  position: fixed; inset: 0;
+  background: linear-gradient(transparent 50%, rgba(0,229,255,0.03) 50%);
+  background-size: 100% 4px;
+  z-index: -1; pointer-events: none;
+}
 
-.app { max-width: 900px; margin: 0 auto; padding: 20px; position: relative; z-index: 10; }
+.app { max-width: 800px; margin: 0 auto; padding: 20px; width: 100%; flex: 1; display: flex; flex-direction: column; }
 
-/* HUD Panels */
-.hud-panel { background: #050f18; border: 1px solid rgba(0, 229, 255, 0.2); box-shadow: inset 0 0 10px rgba(0, 229, 255, 0.05); padding: 15px; border-radius: 4px; }
-.panel-header { padding-bottom: 10px; border-bottom: 1px solid rgba(0, 229, 255, 0.2); font-size: 12px; letter-spacing: 2px; margin-bottom: 10px; color: #fff; }
-.brand-title { font-family: 'Orbitron', sans-serif; font-size: 22px; font-weight: 900; letter-spacing: 4px; text-shadow: 0 0 15px #00e5ff; color: #fff; text-align: center; }
+/* Top HUD */
+.top-hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+.brand-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  color: #fff;
+  text-shadow: 0 0 15px #00e5ff;
+}
+.hud-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  background: rgba(0, 229, 255, 0.05);
+  font-size: 12px;
+}
+.hud-pill .dot { width: 8px; height: 8px; background: #00e5ff; border-radius: 50%; box-shadow: 0 0 10px #00e5ff; }
 
-/* Top Bar */
-.top-hud { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.sys-text { font-size: 14px; color: #fff; letter-spacing: 1px; }
-.sys-sub { font-size: 12px; color: #557a8c; margin-top: 4px; }
-.top-left { border-left: 2px solid #00e5ff; }
-.top-right { border-right: 2px solid #00e5ff; text-align: right; }
+/* Login Glass */
+.login-panel {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+}
+.login-glass {
+  background: rgba(10, 20, 35, 0.6);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  border-radius: 24px;
+  padding: 40px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+}
+.login-glass h2 { font-family: 'Orbitron', sans-serif; margin-bottom: 10px; color: #00e5ff; }
+.login-glass p { color: #8fa8b6; margin-bottom: 30px; }
+.btn-primary {
+  background: linear-gradient(90deg, #00e5ff, #0055ff);
+  color: #fff; border: none; padding: 12px 30px;
+  border-radius: 30px; font-family: 'Orbitron', sans-serif;
+  font-weight: 700; cursor: pointer; box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
+}
 
-/* Login */
-.login-panel { max-width: 400px; margin: 100px auto; text-align: center; padding: 40px; background: #050f18; border: 1px solid rgba(0, 229, 255, 0.2); border-radius: 4px; }
-.login-panel h2 { font-family: 'Orbitron', sans-serif; margin-bottom: 10px; }
-.login-panel p { color: #557a8c; margin-bottom: 30px; }
-.btn-hud { background: transparent; border: 1px solid #00e5ff; color: #00e5ff; padding: 12px 24px; font-family: 'Share Tech Mono', monospace; font-size: 16px; cursor: pointer; transition: 0.3s; text-transform: uppercase; width: 100%; }
-.btn-hud:hover { background: #00e5ff; color: #000; box-shadow: 0 0 15px #00e5ff; }
+/* Dashboard Layout */
+.dashboard { display: flex; flex-direction: column; gap: 25px; flex: 1; }
 
-/* CLASSIC RINGS (Optimized) */
-.core-container { position: relative; width: 100%; height: 300px; display: flex; justify-content: center; align-items: center; margin-bottom: 20px; }
-.core-orb { position: relative; width: 100px; height: 100px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #ccffff, #00e5ff, #003366); box-shadow: 0 0 40px #00e5ff, inset 0 0 15px #fff; display: flex; justify-content: center; align-items: center; z-index: 10; }
-.core-text { font-family: 'Orbitron', sans-serif; font-size: 11px; color: #fff; text-shadow: 0 0 10px #000; z-index: 11; letter-spacing: 1px; font-weight: bold; }
-.ring { position: absolute; border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; }
-.ring-inner { width: 150px; height: 150px; border: 1px dashed rgba(0, 229, 255, 0.4); animation: spin 15s linear infinite; }
-.ring-mid { width: 210px; height: 210px; border: 2px solid transparent; border-top: 2px solid #00e5ff; border-bottom: 2px solid #00e5ff; animation: spinRev 10s linear infinite; }
-.ring-outer { width: 280px; height: 280px; border: 1px solid rgba(0, 229, 255, 0.2); border-left: 3px solid #00e5ff; animation: spin 25s linear infinite; }
+/* Core Orb (No Boxes) */
+.core-container {
+  position: relative; height: 250px;
+  display: flex; justify-content: center; align-items: center;
+}
+.ring { position: absolute; border-radius: 50%; }
+.ring-outer { width: 250px; height: 250px; border: 1px dashed rgba(0, 229, 255, 0.3); animation: spin 20s linear infinite; }
+.ring-mid { width: 180px; height: 180px; border: 1px solid rgba(0, 229, 255, 0.5); border-top: 2px solid #00e5ff; animation: spinRev 10s linear infinite; }
+.ring-inner { width: 120px; height: 120px; border: 1px dotted #00e5ff; animation: spin 15s linear infinite; }
 
-/* Chat Console */
-.console-panel { height: 300px; display: flex; flex-direction: column; padding: 0; margin-bottom: 20px; overflow: hidden; }
-.chat-container { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-.chat-container::-webkit-scrollbar { width: 4px; }
-.chat-container::-webkit-scrollbar-thumb { background: #00e5ff; }
-.msg { max-width: 85%; padding: 10px 14px; font-size: 14px; line-height: 1.5; border-radius: 4px; }
-.jarvis { align-self: flex-start; background: rgba(0, 229, 255, 0.1); border-left: 2px solid #00e5ff; color: #a5e4ff; }
-.user { align-self: flex-end; background: rgba(255, 255, 255, 0.05); border-right: 2px solid #fff; color: #fff; }
-.error { background: rgba(255, 50, 50, 0.1); border-left: 2px solid #ff3333; color: #ff8888; align-self: flex-start; }
+.core-orb {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #fff, #00e5ff, #003366);
+  box-shadow: 0 0 40px #00e5ff, inset 0 0 20px #fff;
+  display: flex; justify-content: center; align-items: center;
+  z-index: 10;
+  animation: orbPulse 2s infinite alternate;
+}
+.core-text { font-family: 'Orbitron', sans-serif; font-size: 9px; color: #fff; font-weight: bold; }
 
-.input-area { display: flex; align-items: center; padding: 10px 15px; background: #02060a; border-top: 1px solid rgba(0, 229, 255, 0.2); }
-.prompt { color: #00e5ff; font-size: 18px; margin-right: 10px; }
-.input-area input { flex: 1; background: transparent; border: none; color: #00e5ff; font-family: 'Share Tech Mono', monospace; font-size: 16px; outline: none; }
-.btn-send { background: transparent; border: 1px solid #00e5ff; color: #00e5ff; padding: 8px 15px; border-radius: 2px; cursor: pointer; font-family: 'Share Tech Mono', monospace; transition: 0.3s; }
-.btn-send:hover { background: #00e5ff; color: #000; }
+/* Chat Interface */
+.chat-interface {
+  background: rgba(5, 15, 25, 0.7);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  border: 1px solid rgba(0, 229, 255, 0.15);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  flex: 1;
+}
+.chat-header {
+  padding: 15px 20px; border-bottom: 1px solid rgba(0, 229, 255, 0.1);
+  font-family: 'Orbitron', sans-serif; font-size: 12px; letter-spacing: 2px;
+  display: flex; justify-content: space-between; color: #8fa8b6;
+}
+.status-live { color: #00ff88; text-shadow: 0 0 10px #00ff88; }
+.chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; min-height: 200px; max-height: 350px; }
+.chat-box::-webkit-scrollbar { width: 4px; }
+.chat-box::-webkit-scrollbar-thumb { background: rgba(0, 229, 255, 0.5); border-radius: 4px; }
 
-/* Controls */
-.controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-.mic-panel { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
-.mic-status { font-size: 12px; color: #557a8c; }
+.msg { display: flex; flex-direction: column; max-width: 85%; }
+.msg-content { padding: 12px 16px; border-radius: 18px; font-size: 14px; line-height: 1.5; }
+.jarvis { align-self: flex-start; }
+.jarvis .msg-content { background: rgba(0, 229, 255, 0.1); border: 1px solid rgba(0, 229, 255, 0.2); border-bottom-left-radius: 4px; color: #a5e4ff; }
+.user { align-self: flex-end; }
+.user .msg-content { background: rgba(0, 229, 255, 0.2); border: 1px solid #00e5ff; border-bottom-right-radius: 4px; color: #fff; }
+.error { align-self: flex-start; }
+.error .msg-content { background: rgba(255, 50, 50, 0.1); border: 1px solid #ff3333; color: #ff8888; }
+
+.input-area { display: flex; padding: 15px; background: rgba(0,0,0,0.4); border-top: 1px solid rgba(0, 229, 255, 0.1); }
+.input-area input {
+  flex: 1; background: transparent; border: none; color: #fff;
+  font-family: 'Share Tech Mono', monospace; font-size: 16px; outline: none; padding: 10px;
+}
+.btn-send {
+  background: #00e5ff; border: none; width: 45px; height: 45px;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: #000; transition: 0.3s;
+}
+.btn-send svg { width: 20px; height: 20px; fill: currentColor; }
+.btn-send:hover { box-shadow: 0 0 15px #00e5ff; }
+
+/* Controls (Glass Panels) */
+.controls-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.glass-panel {
+  background: rgba(10, 20, 35, 0.5); backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 229, 255, 0.15); border-radius: 20px;
+  padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.mic-status { font-size: 12px; color: #8fa8b6; margin-bottom: 15px; font-family: 'Orbitron', sans-serif; }
 .mic-status.on { color: #00e5ff; text-shadow: 0 0 10px #00e5ff; }
-.btn-mic { width: 60px; height: 60px; border-radius: 50%; background: rgba(0, 229, 255, 0.1); border: 2px solid #00e5ff; color: #00e5ff; font-size: 24px; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; }
+.btn-mic {
+  width: 70px; height: 70px; border-radius: 50%; background: rgba(0, 229, 255, 0.1);
+  border: 2px solid #00e5ff; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: #00e5ff; transition: 0.3s;
+}
+.btn-mic svg { width: 30px; height: 30px; fill: currentColor; }
 .btn-mic.listening { background: #00e5ff; color: #000; animation: pulseMic 1.5s infinite; }
-.voice-controls { display: flex; gap: 15px; margin-top: 5px; }
-.btn-text { background: none; border: none; color: #8fa8b6; font-family: 'Share Tech Mono', monospace; cursor: pointer; font-size: 12px; }
-.btn-text:hover { color: #00e5ff; }
-.text-danger:hover { color: #ff3333; }
 
-.profile-panel { display: flex; flex-direction: column; justify-content: center; gap: 10px; }
-.data-row { display: flex; justify-content: space-between; font-size: 14px; border-bottom: 1px dashed rgba(0, 229, 255, 0.2); padding-bottom: 5px; }
-.data-row:last-child { border: none; }
-.data-row span { color: #557a8c; }
+.user-panel { align-items: flex-start; }
+.data-row { display: flex; justify-content: space-between; width: 100%; font-size: 13px; margin-bottom: 10px; border-bottom: 1px dashed rgba(0, 229, 255, 0.2); padding-bottom: 5px; }
+.data-row span { color: #8fa8b6; }
 .data-row b { color: #00e5ff; }
+.action-buttons { display: flex; justify-content: space-between; width: 100%; margin-top: 10px; }
+.btn-text { background: none; border: none; color: #8fa8b6; font-family: inherit; cursor: pointer; font-size: 12px; }
+.btn-text.red:hover { color: #ff3333; }
 
 /* Animations */
-@keyframes spin { 100% { transform: translate(-50%, -50%) rotate(360deg); } }
-@keyframes spinRev { 100% { transform: translate(-50%, -50%) rotate(-360deg); } }
-@keyframes pulseMic { 0% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(0, 229, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0); } }
+@keyframes spin { 100% { transform: rotate(360deg); } }
+@keyframes spinRev { 100% { transform: rotate(-360deg); } }
+@keyframes orbPulse { 0% { box-shadow: 0 0 30px #00e5ff; } 100% { box-shadow: 0 0 60px #00e5ff, inset 0 0 20px #fff; } }
+@keyframes pulseMic { 0% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0.5); } 70% { box-shadow: 0 0 0 20px rgba(0, 229, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0); } }
+@keyframes bgPulse { 0% { opacity: 0.5; } 100% { opacity: 1; } }
 
-@media(max-width: 768px) {
-  .controls-grid { grid-template-columns: 1fr; }
-  .top-hud { flex-direction: column; text-align: center; gap: 10px; }
-  .top-left, .top-right { border: none; }
-  .ring-inner { width: 130px; height: 130px; }
-  .ring-mid { width: 180px; height: 180px; }
-  .ring-outer { width: 240px; height: 240px; }
-  .core-orb { width: 80px; height: 80px; }
+@media(max-width: 600px) {
+  .controls-row { grid-template-columns: 1fr; }
+  .top-hud { flex-direction: column; gap: 10px; }
+  .app { padding: 10px; }
 }
