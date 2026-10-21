@@ -16,12 +16,12 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 
-// मॉडल्स का क्रम (पहले Groq, फिर Gemini)
+// 🌟 SMART FALLBACK CHAIN (Priority Order)
 const MODEL_CHAIN = [
-  { provider: "groq", model: "llama-3.3-70b-versatile" }, // सबसे स्मार्ट Groq मॉडल
-  { provider: "groq", model: "llama-3.1-8b-instant" },    // सबसे तेज़ Groq मॉडल
-  { provider: "gemini", model: "gemini-3.8-flash" },      // बैकअप के लिए Gemini
-  { provider: "gemini", model: "gemini-2.5-flash" }
+  { provider: "groq", model: "llama-3.3-70b-versatile" }, // 1. सबसे तेज़ और स्मार्ट
+  { provider: "gemini", model: "gemini-3.8-flash" },      // 2. लेटेस्ट Gemini
+  { provider: "gemini", model: "gemini-3.5-flash-lite" }, // 3. फास्ट Gemini
+  { provider: "gemini", model: "gemini-2.5-flash" }       // 4. पुराना स्टेबल Gemini
 ];
 
 const ALLOWED_ORIGINS = [
@@ -50,7 +50,7 @@ app.use(express.json({ limit: "1mb" }));
 // AI PROVIDERS
 // ========================================
 
-// 1. Groq API Call
+// 1. Groq API Call (सबसे तेज़)
 async function callGroq(model, message, history) {
   const res = await fetch(GROQ_URL, {
     method: "POST",
@@ -75,9 +75,8 @@ async function callGroq(model, message, history) {
   return data.choices[0].message.content;
 }
 
-// 2. Gemini API Call
+// 2. Gemini API Call (बैकअप)
 async function callGemini(model, message, history) {
-  // Gemini के लिए हिस्ट्री फॉर्मेट थोड़ा अलग होता है
   const contents = history.map(msg => ({
     role: msg.role === "user" ? "user" : "model",
     parts: [{ text: msg.content }]
@@ -109,7 +108,7 @@ async function getJarvisReply(message, history = []) {
 
   for (const item of MODEL_CHAIN) {
     try {
-      console.log(`Trying ${item.provider} model: ${item.model}`);
+      console.log(`⚡ Trying ${item.provider} model: ${item.model}`);
       
       let reply;
       if (item.provider === "groq") {
@@ -126,10 +125,11 @@ async function getJarvisReply(message, history = []) {
     } catch (err) {
       console.warn(`❌ Failed ${item.model}:`, err.message);
       errors.push(`${item.model}: ${err.message}`);
+      // Loop apne aap agle model par chala jayega
     }
   }
 
-  throw new Error("All AI models failed. Please try again later.");
+  throw new Error("All AI models failed.");
 }
 
 // ========================================
@@ -138,12 +138,12 @@ async function getJarvisReply(message, history = []) {
 app.get("/", (req, res) => {
   res.json({
     status: "online",
-    system: "JARVIS",
+    system: "JARVIS Hybrid System",
     providers: {
       groq: GROQ_API_KEY ? "configured" : "missing",
       gemini: GEMINI_API_KEY ? "configured" : "missing"
     },
-    models: MODEL_CHAIN.map(m => m.model)
+    chain: MODEL_CHAIN.map(m => m.model)
   });
 });
 
@@ -157,7 +157,7 @@ app.post("/api/chat", async (req, res) => {
 
     console.log("JARVIS COMMAND:", message);
 
-    // 🧠 Context Memory (Frontend se aayi history)
+    // Frontend se aayi history ko format karna
     const formattedHistory = history && Array.isArray(history) ? history.map(h => ({
       role: h.sender === "user" ? "user" : "assistant",
       content: h.text
@@ -172,7 +172,7 @@ app.post("/api/chat", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("SERVER ERROR:", error.message);
+    console.error("❌ SERVER ERROR:", error.message);
     res.status(500).json({ error: "JARVIS is currently unable to respond." });
   }
 });
@@ -181,9 +181,9 @@ app.post("/api/chat", async (req, res) => {
 // START SERVER
 // ========================================
 app.listen(PORT, () => {
-  console.log(`🚀 JARVIS running on port ${PORT}`);
+  console.log(`🚀 JARVIS Hybrid Server running on port ${PORT}`);
   console.log(`Groq Key: ${GROQ_API_KEY ? "OK" : "MISSING"}`);
   console.log(`Gemini Key: ${GEMINI_API_KEY ? "OK" : "MISSING"}`);
-  console.log("Model Chain:");
-  MODEL_CHAIN.forEach((m, i) => console.log(`  ${i+1}. ${m.provider} - ${m.model}`));
+  console.log("--- Fallback Chain ---");
+  MODEL_CHAIN.forEach((m, i) => console.log(`${i+1}. ${m.provider.toUpperCase()} → ${m.model}`));
 });
